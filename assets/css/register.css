@@ -1,45 +1,138 @@
-body {
-    background-color: #222222;
+:root {
+    --primary-color: #1a73e8; /* Google Blue */
+    --primary-light: #4e92ef;
+    --primary-dark: #0d47a1;
+    --dark-color: #212529;
+    --text-on-primary: #ffffff;
 }
+
+body {
+    background-color: #212529;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+    max-width: 1000px;
+}
+
 .registration-container {
-    max-width: 800px;
-    margin-top: 3rem;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    max-width: 900px;
+    margin: 0 auto;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.3);
     border-radius: 1rem;
     overflow: hidden;
 }
+
 .form-side {
     padding: 2.5rem;
+    background-color: white;
 }
+
 .image-side {
-    background: linear-gradient(135deg, #ffcc33, #ff9900);
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    color: var(--text-on-primary);
 }
+
 .image-side img {
     max-width: 100%;
 }
-.form-control:focus {
-    border-color: #ffc107;
-    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+
+.form-control:focus, .form-select:focus, .form-check-input:checked {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(26, 115, 232, 0.25);
 }
+
 .btn-primary {
-    background-color: #ffc107;
-    border-color: #ffc107;
-    color: #212529;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-on-primary);
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
-.btn-primary:hover {
-    background-color: #ffb300;
-    border-color: #ffb300;
-    color: #212529;
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: var(--text-on-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
+
 .form-label {
     font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
 }
+
 .input-group-text {
-    background-color: #ffc107;
-    color: #212529;
-    border-color: #ffc107;
+    background-color: var(--primary-color);
+    color: var(--text-on-primary);
+    border-color: var(--primary-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+a {
+    color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+.btn-outline-secondary {
+    color: #6c757d;
+    border-color: #ced4da;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+.alert {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.taxi-logo {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+h2, .h2 {
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.image-side h2, .image-side .h2, .image-side p {
+    color: var(--text-on-primary);
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.invalid-feedback {
+    font-size: 80%;
 }

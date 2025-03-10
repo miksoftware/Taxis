@@ -1,0 +1,97 @@
+:root {
+    --primary-color: #1a73e8; /* Google Blue */
+    --primary-light: #4e92ef;
+    --primary-dark: #0d47a1;
+    --dark-color: #212529;
+    --text-on-primary: #ffffff;
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.sidebar {
+    background-color: var(--dark-color);
+    height: 100vh;
+    position: fixed;
+    padding-top: 1rem;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+.sidebar .nav-link {
+    color: rgba(255,255,255,.75);
+    padding: .75rem 1rem;
+    transition: all 0.3s ease;
+}
+.sidebar .nav-link:hover {
+    color: rgba(255,255,255,1);
+    background-color: rgba(255,255,255,0.1);
+    border-radius: .25rem;
+}
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: var(--primary-color);
+    border-radius: .25rem;
+    font-weight: 500;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.sidebar .nav-link i {
+    margin-right: .5rem;
+}
+.navbar {
+    background-color: var(--primary-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.navbar-brand, .navbar .nav-link {
+    color: var(--text-on-primary) !important;
+}
+.dropdown-menu {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    border: none;
+    border-radius: 8px;
+}
+.dropdown-item:hover {
+    background-color: rgba(26, 115, 232, 0.1);
+}
+.dropdown-item i {
+    color: var(--primary-color);
+}
+.content {
+    margin-left: 240px;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    min-height: calc(100vh - 56px);
+}
+.welcome-message {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    color: var(--text-on-primary);
+    padding: 1.5rem;
+    border-radius: .75rem;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+    margin-bottom: 2rem;
+}
+.card {
+    border: none;
+    border-radius: .75rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+}
+.card-header {
+    border-top-left-radius: .75rem !important;
+    border-top-right-radius: .75rem !important;
+    background-color: rgba(26, 115, 232, 0.1);
+}
+.card-title i {
+    color: var(--primary-color);
+}
+@media (max-width: 991.98px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    .content {
+        margin-left: 0;
+    }
+}
