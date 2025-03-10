@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Verificar si el usuario está autenticado
-if(!isset($_SESSION['autenticado']) || $_SESSION['autenticado'] !== true) {
+if (!isset($_SESSION['autenticado']) || $_SESSION['autenticado'] !== true) {
     // Si no está autenticado, redirigir al login
     $_SESSION['error_mensaje'] = "Debe iniciar sesión para acceder al panel de control";
     header('Location: ../Views/Login.php');
@@ -50,7 +50,9 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="perfil.php"><i class="bi bi-person me-2"></i> Perfil</a></li>
                             <li><a class="dropdown-item" href="cambiar_password.php"><i class="bi bi-key me-2"></i> Cambiar contraseña</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li><a class="dropdown-item" href="../Processings/procesar_logout.php"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
                         </ul>
                     </li>
@@ -70,17 +72,22 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                             </a>
                         </li>
                         <?php if ($usuario_rol === 'administrador'): ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'usuarios.php' ? 'active' : ''; ?>" href="usuarios.php">
-                                <i class="bi bi-people"></i> Usuarios
-                            </a>
-                        </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'usuarios.php' ? 'active' : ''; ?>" href="usuarios.php">
+                                    <i class="bi bi-people"></i> Usuarios
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Vehiculo.php' ? 'active' : ''; ?>" href="Vehiculo.php">
+                                    <i class="bi bi-car-front"></i> Vehículos
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'ArticuloSancion.php' ? 'active' : ''; ?>" href="ArticuloSancion.php">
+                                    <i class="bi bi-journal-text"></i> Artículos de Sanción
+                                </a>
+                            </li>
                         <?php endif; ?>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'servicios.php' ? 'active' : ''; ?>" href="servicios.php">
-                                <i class="bi bi-journal-text"></i> Servicios
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'reportes.php' ? 'active' : ''; ?>" href="reportes.php">
                                 <i class="bi bi-bar-chart"></i> Reportes

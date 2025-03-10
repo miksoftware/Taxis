@@ -1,9 +1,6 @@
 <?php
 // Iniciar sesión si no está iniciada
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
+session_start();
 // Incluir el encabezado
 require_once 'Layouts/header.php';
 
