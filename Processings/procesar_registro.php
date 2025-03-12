@@ -5,10 +5,14 @@ session_start();
 // Incluir la configuración de la base de datos
 require_once '../config/database.php';
 
+// Crear instancia de la base de datos y obtener la conexión PDO
+$db = new Database();
+$pdo = $db->getPdo();
+
 // Incluir el controlador
 require_once '../Controllers/UsuarioController.php';
 
-// Crear instancia del controlador
+// Crear instancia del controlador 
 $usuarioController = new UsuarioController($pdo);
 
 // Verificar que el formulario ha sido enviado vía POST

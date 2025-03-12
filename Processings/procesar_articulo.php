@@ -32,39 +32,39 @@ $accion = $_POST['accion'];
 
 switch ($accion) {
     case 'crear':
-        // Validar datos mínimos
-        if (empty($_POST['codigo']) || empty($_POST['descripcion']) || !isset($_POST['tiempo_sancion'])) {
-            $_SESSION['mensaje'] = "Todos los campos son obligatorios";
-            $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/ArticuloSancion.php');
-            exit;
-        }
-        
-        // Preparar datos
-        $datos = [
-            'codigo' => $_POST['codigo'],
-            'descripcion' => $_POST['descripcion'],
-            'tiempo_sancion' => intval($_POST['tiempo_sancion']),
-            'activo' => isset($_POST['activo']) ? 1 : 0
-        ];
-        
-        // Registrar artículo
-        $resultado = $articuloController->registrar($datos);
-        
-        if (isset($resultado['error']) && $resultado['error']) {
-            $_SESSION['mensaje'] = $resultado['mensaje'];
-            $_SESSION['tipo_mensaje'] = "danger";
-        } else {
-            $_SESSION['mensaje'] = "Artículo registrado correctamente";
-            $_SESSION['tipo_mensaje'] = "success";
-        }
-        
+       // Validar datos mínimos
+       if (empty($_POST['codigo']) || empty($_POST['descripcion']) || !isset($_POST['tiempo_sancion'])) {
+        $_SESSION['mensaje'] = "Todos los campos son obligatorios";
+        $_SESSION['tipo_mensaje'] = "danger";
         header('Location: ../Views/ArticuloSancion.php');
-        break;
+        exit;
+    }
+    
+    // Preparar datos - MODIFICADO PARA CONVERTIR ACTIVO A ESTADO
+    $datos = [
+        'codigo' => $_POST['codigo'],
+        'descripcion' => $_POST['descripcion'],
+        'tiempo_sancion' => intval($_POST['tiempo_sancion']),
+        'estado' => isset($_POST['activo']) && $_POST['activo'] == '1' ? 'activo' : 'inactivo'
+    ];
+    
+    // Registrar artículo
+    $resultado = $articuloController->registrar($datos);
+    
+    if (isset($resultado['error']) && $resultado['error']) {
+        $_SESSION['mensaje'] = $resultado['mensaje'];
+        $_SESSION['tipo_mensaje'] = "danger";
+    } else {
+        $_SESSION['mensaje'] = "Artículo registrado correctamente";
+        $_SESSION['tipo_mensaje'] = "success";
+    }
+    
+    header('Location: ../Views/ArticuloSancion.php');
+    break;
         
     case 'actualizar':
-        // Validar ID
-        if (!isset($_POST['id']) || empty($_POST['id'])) {
+         // Validar ID
+         if (!isset($_POST['id']) || empty($_POST['id'])) {
             $_SESSION['mensaje'] = "ID de artículo no especificado";
             $_SESSION['tipo_mensaje'] = "danger";
             header('Location: ../Views/ArticuloSancion.php');
@@ -79,13 +79,13 @@ switch ($accion) {
             exit;
         }
         
-        // Preparar datos
+        // Preparar datos - MODIFICADO PARA CONVERTIR ACTIVO A ESTADO
         $id = intval($_POST['id']);
         $datos = [
             'codigo' => $_POST['codigo'],
             'descripcion' => $_POST['descripcion'],
             'tiempo_sancion' => intval($_POST['tiempo_sancion']),
-            'activo' => isset($_POST['activo']) ? 1 : 0
+            'estado' => isset($_POST['activo']) && $_POST['activo'] == '1' ? 'activo' : 'inactivo'
         ];
         
         // Actualizar artículo

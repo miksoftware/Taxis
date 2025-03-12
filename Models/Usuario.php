@@ -27,9 +27,9 @@ class Usuario {
             // Encriptar la contraseña
             $password_hash = password_hash($datos['password'], PASSWORD_DEFAULT);
             
-            // Preparar la consulta
-            $sql = "INSERT INTO usuarios (nombre, apellidos, email, username, password, telefono, rol, fecha_registro)
-                    VALUES (:nombre, :apellidos, :email, :username, :password, :telefono, :rol, NOW())";
+            // CAMBIO: Usar 'estado' en lugar de 'activo'
+            $sql = "INSERT INTO usuarios (nombre, apellidos, email, username, password, telefono, rol, estado, fecha_registro)
+                    VALUES (:nombre, :apellidos, :email, :username, :password, :telefono, :rol, 'activo', NOW())";
             
             $stmt = $this->pdo->prepare($sql);
             
@@ -45,10 +45,192 @@ class Usuario {
             // Ejecutar consulta
             $stmt->execute();
             
-            return ['error' => false, 'mensaje' => 'Usuario registrado correctamente'];
+            return [
+                'error' => false, 
+                'mensaje' => 'Usuario registrado correctamente',
+                'id' => $this->pdo->lastInsertId()
+            ];
             
         } catch (PDOException $e) {
             return ['error' => true, 'mensaje' => 'Error al registrar usuario: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Obtiene la lista de todos los usuarios
+     * 
+     * @return array
+     */
+    public function listar() {
+        try {
+            $sql = "SELECT * FROM usuarios ORDER BY fecha_registro DESC";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return ['error' => true, 'mensaje' => 'Error al listar usuarios: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Obtiene los datos de un usuario específico
+     * 
+     * @param int $id
+     * @return array
+     */
+    public function obtener($id) {
+        try {
+            $sql = "SELECT * FROM usuarios WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$usuario) {
+                return ['error' => true, 'mensaje' => 'Usuario no encontrado'];
+            }
+            
+            return $usuario;
+        } catch (PDOException $e) {
+            return ['error' => true, 'mensaje' => 'Error al obtener usuario: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Actualiza la información de un usuario
+     * 
+     * @param int $id
+     * @param array $datos
+     * @return array
+     */
+    public function actualizar($id, $datos) {
+        try {
+            // Verificar si el email ya existe (excepto para este usuario)
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE email = :email AND id != :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':email', $datos['email']);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            if ($stmt->fetchColumn() > 0) {
+                return ['error' => true, 'mensaje' => 'El correo electrónico ya está registrado por otro usuario'];
+            }
+            
+            // Verificar si el username ya existe (excepto para este usuario)
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE username = :username AND id != :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':username', $datos['username']);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            if ($stmt->fetchColumn() > 0) {
+                return ['error' => true, 'mensaje' => 'El nombre de usuario ya está en uso por otro usuario'];
+            }
+            
+            // Actualizar usuario
+            $sql = "UPDATE usuarios SET 
+                    nombre = :nombre,
+                    apellidos = :apellidos,
+                    email = :email,
+                    username = :username,
+                    telefono = :telefono,
+                    rol = :rol
+                    WHERE id = :id";
+                    
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':nombre', $datos['nombre']);
+            $stmt->bindParam(':apellidos', $datos['apellidos']);
+            $stmt->bindParam(':email', $datos['email']);
+            $stmt->bindParam(':username', $datos['username']);
+            $stmt->bindParam(':telefono', $datos['telefono']);
+            $stmt->bindParam(':rol', $datos['rol']);
+            $stmt->bindParam(':id', $id);
+            
+            $stmt->execute();
+            
+            return ['error' => false, 'mensaje' => 'Usuario actualizado correctamente'];
+        } catch (PDOException $e) {
+            return ['error' => true, 'mensaje' => 'Error al actualizar usuario: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Cambia el estado de un usuario (activo/inactivo)
+     * 
+     * @param int $id
+     * @param int $estado 1 para activo, 0 para inactivo
+     * @return array
+     */
+    public function cambiarEstado($id, $estado) {
+        try {
+            // Validar que el usuario exista
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            if ($stmt->fetchColumn() == 0) {
+                return ['error' => true, 'mensaje' => 'Usuario no encontrado'];
+            }
+            
+            // CAMBIO: Usar directamente los valores 'activo' o 'inactivo'
+            // Validar que el estado sea correcto
+            if (!in_array($estado, ['activo', 'inactivo'])) {
+                return ['error' => true, 'mensaje' => 'Estado no válido'];
+            }
+            
+            // Cambiar estado
+            $sql = "UPDATE usuarios SET estado = :estado WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':estado', $estado);
+            $stmt->bindParam(':id', $id);
+            
+            $stmt->execute();
+            
+            return [
+                'error' => false, 
+                'mensaje' => ($estado == 'activo') ? 'Usuario activado correctamente' : 'Usuario desactivado correctamente'
+            ];
+        } catch (PDOException $e) {
+            return ['error' => true, 'mensaje' => 'Error al cambiar estado: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Restablece la contraseña de un usuario
+     * 
+     * @param int $id
+     * @param string $password
+     * @return array
+     */
+    public function resetPassword($id, $password) {
+        try {
+            // Validar que el usuario exista
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            if ($stmt->fetchColumn() == 0) {
+                return ['error' => true, 'mensaje' => 'Usuario no encontrado'];
+            }
+            
+            // Encriptar la nueva contraseña
+            $password_hash = password_hash($password, PASSWORD_DEFAULT);
+            
+            // Actualizar contraseña
+            $sql = "UPDATE usuarios SET password = :password WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':password', $password_hash);
+            $stmt->bindParam(':id', $id);
+            
+            $stmt->execute();
+            
+            return ['error' => false, 'mensaje' => 'Contraseña restablecida correctamente'];
+        } catch (PDOException $e) {
+            return ['error' => true, 'mensaje' => 'Error al restablecer contraseña: ' . $e->getMessage()];
         }
     }
     
@@ -92,7 +274,7 @@ class Usuario {
     public function verificarCredenciales($username, $password) {
         try {
             // El username puede ser el nombre de usuario o el email
-            $sql = "SELECT * FROM usuarios WHERE (username = :username OR email = :email) AND estado = 1";
+            $sql = "SELECT * FROM usuarios WHERE (username = :username OR email = :email) AND activo = 1";
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':username', $username);
             $stmt->bindParam(':email', $username);
@@ -154,7 +336,7 @@ class Usuario {
     public function verificarTokenRecuerdo($token) {
         try {
             // Buscar usuarios con token
-            $sql = "SELECT * FROM usuarios WHERE fecha_token > (NOW() - INTERVAL 30 DAY) AND estado = 1";
+            $sql = "SELECT * FROM usuarios WHERE fecha_token > (NOW() - INTERVAL 30 DAY) AND activo = 1";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute();
             
@@ -190,9 +372,35 @@ class Usuario {
             return false;
         }
     }
-
-
-
-
+    
+    /**
+     * Elimina un usuario (no recomendado, mejor usar cambiarEstado)
+     * 
+     * @param int $id
+     * @return array
+     */
+    public function eliminar($id) {
+        try {
+            // Verificar si el usuario existe
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            if ($stmt->fetchColumn() == 0) {
+                return ['error' => true, 'mensaje' => 'Usuario no encontrado'];
+            }
+            
+            // Eliminar usuario
+            $sql = "DELETE FROM usuarios WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            return ['error' => false, 'mensaje' => 'Usuario eliminado correctamente'];
+        } catch (PDOException $e) {
+            return ['error' => true, 'mensaje' => 'Error al eliminar usuario: ' . $e->getMessage()];
+        }
+    }
 }
 ?>

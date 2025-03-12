@@ -83,6 +83,11 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'sanciones.php' ? 'active' : ''; ?>" href="sanciones.php">
+                                    <i class="bi bi-exclamation-triangle"></i> Vehiculos Sancionados
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'ArticuloSancion.php' ? 'active' : ''; ?>" href="ArticuloSancion.php">
                                     <i class="bi bi-journal-text"></i> Artículos de Sanción
                                 </a>

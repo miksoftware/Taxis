@@ -40,10 +40,10 @@ unset($_SESSION['tipo_mensaje']);
 <div class="row mb-4">
     <div class="col-md-12">
         <?php if ($mensaje): ?>
-        <div class="alert alert-<?php echo $tipo_mensaje; ?> alert-dismissible fade show" role="alert">
-            <?php echo $mensaje; ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+            <div class="alert alert-<?php echo $tipo_mensaje; ?> alert-dismissible fade show" role="alert">
+                <?php echo $mensaje; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         <?php endif; ?>
     </div>
 </div>
@@ -82,7 +82,7 @@ unset($_SESSION['tipo_mensaje']);
                                     <span class="text-muted">(<?php echo $articulo['tiempo_sancion']; ?> min)</span>
                                 </td>
                                 <td>
-                                    <?php if ($articulo['activo']): ?>
+                                    <?php if ($articulo['estado'] === 'activo'): ?>
                                         <span class="badge bg-success">Activo</span>
                                     <?php else: ?>
                                         <span class="badge bg-danger">Inactivo</span>
@@ -90,11 +90,11 @@ unset($_SESSION['tipo_mensaje']);
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button type="button" class="btn btn-primary btn-sm" 
+                                        <button type="button" class="btn btn-primary btn-sm"
                                             onclick="editarArticulo(<?php echo $articulo['id']; ?>)">
                                             <i class="bi bi-pencil"></i>
                                         </button>
-                                        <?php if ($articulo['activo']): ?>
+                                        <?php if ($articulo['estado'] === 'activo'): ?>
                                             <button type="button" class="btn btn-warning btn-sm"
                                                 onclick="cambiarEstado(<?php echo $articulo['id']; ?>, 0)">
                                                 <i class="bi bi-toggle-on"></i>
@@ -236,7 +236,7 @@ unset($_SESSION['tipo_mensaje']);
                     <input type="hidden" id="eliminar_id" name="id">
                     <p>¿Está seguro que desea eliminar el artículo <span id="eliminar_codigo" class="fw-bold"></span>?</p>
                     <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle-fill"></i> 
+                        <i class="bi bi-exclamation-triangle-fill"></i>
                         La eliminación de un artículo podría afectar a las sanciones históricas asociadas a él.
                     </div>
                 </div>
@@ -284,69 +284,69 @@ unset($_SESSION['tipo_mensaje']);
 
 <!-- Script para la funcionalidad -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar DataTable si está disponible
-    if (typeof $.fn.DataTable !== 'undefined') {
-        $('#tablaArticulos').DataTable({
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json'
-            },
-            responsive: true
-        });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar DataTable si está disponible
+        if (typeof $.fn.DataTable !== 'undefined') {
+            $('#tablaArticulos').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json'
+                },
+                responsive: true
+            });
+        }
+    });
+
+    function editarArticulo(id) {
+        // Obtener datos del artículo por AJAX
+        fetch('../Processings/obtener_articulo.php?id=' + id)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.mensaje);
+                    return;
+                }
+
+                // Llenar el formulario
+                document.getElementById('editar_id').value = data.id;
+                document.getElementById('editar_codigo').value = data.codigo;
+                document.getElementById('editar_descripcion').value = data.descripcion;
+                document.getElementById('editar_tiempo_sancion').value = data.tiempo_sancion;
+                document.getElementById('editar_activo').checked = data.activo == 1;
+
+                // Mostrar el modal
+                new bootstrap.Modal(document.getElementById('editarArticuloModal')).show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cargar datos del artículo');
+            });
     }
-});
 
-function editarArticulo(id) {
-    // Obtener datos del artículo por AJAX
-    fetch('../Processings/obtener_articulo.php?id=' + id)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.mensaje);
-                return;
-            }
-            
-            // Llenar el formulario
-            document.getElementById('editar_id').value = data.id;
-            document.getElementById('editar_codigo').value = data.codigo;
-            document.getElementById('editar_descripcion').value = data.descripcion;
-            document.getElementById('editar_tiempo_sancion').value = data.tiempo_sancion;
-            document.getElementById('editar_activo').checked = data.activo == 1;
-            
-            // Mostrar el modal
-            new bootstrap.Modal(document.getElementById('editarArticuloModal')).show();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error al cargar datos del artículo');
-        });
-}
+    function confirmarEliminar(id, codigo) {
+        document.getElementById('eliminar_id').value = id;
+        document.getElementById('eliminar_codigo').textContent = codigo;
 
-function confirmarEliminar(id, codigo) {
-    document.getElementById('eliminar_id').value = id;
-    document.getElementById('eliminar_codigo').textContent = codigo;
-    
-    new bootstrap.Modal(document.getElementById('confirmarEliminarModal')).show();
-}
-
-function cambiarEstado(id, estado) {
-    document.getElementById('estado_id').value = id;
-    document.getElementById('estado_valor').value = estado;
-    
-    // Configurar textos según el estado
-    if (estado == 1) {
-        document.getElementById('titulo_estado').textContent = "Activar Artículo";
-        document.getElementById('texto_estado').textContent = "¿Está seguro que desea activar este artículo? Esta acción permitirá que sea utilizado al aplicar sanciones.";
-        document.getElementById('advertencia_estado').style.display = 'none';
-    } else {
-        document.getElementById('titulo_estado').textContent = "Desactivar Artículo";
-        document.getElementById('texto_estado').textContent = "¿Está seguro que desea desactivar este artículo? Esta acción impedirá que sea utilizado al aplicar nuevas sanciones.";
-        document.getElementById('texto_advertencia').textContent = "La desactivación no afectará a las sanciones ya aplicadas con este artículo.";
-        document.getElementById('advertencia_estado').style.display = 'block';
+        new bootstrap.Modal(document.getElementById('confirmarEliminarModal')).show();
     }
-    
-    new bootstrap.Modal(document.getElementById('cambiarEstadoModal')).show();
-}
+
+    function cambiarEstado(id, estado) {
+        document.getElementById('estado_id').value = id;
+        document.getElementById('estado_valor').value = estado;
+
+        // Configurar textos según el estado
+        if (estado == 1) {
+            document.getElementById('titulo_estado').textContent = "Activar Artículo";
+            document.getElementById('texto_estado').textContent = "¿Está seguro que desea activar este artículo? Esta acción permitirá que sea utilizado al aplicar sanciones.";
+            document.getElementById('advertencia_estado').style.display = 'none';
+        } else {
+            document.getElementById('titulo_estado').textContent = "Desactivar Artículo";
+            document.getElementById('texto_estado').textContent = "¿Está seguro que desea desactivar este artículo? Esta acción impedirá que sea utilizado al aplicar nuevas sanciones.";
+            document.getElementById('texto_advertencia').textContent = "La desactivación no afectará a las sanciones ya aplicadas con este artículo.";
+            document.getElementById('advertencia_estado').style.display = 'block';
+        }
+
+        new bootstrap.Modal(document.getElementById('cambiarEstadoModal')).show();
+    }
 </script>
 
 <?php

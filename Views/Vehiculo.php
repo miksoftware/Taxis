@@ -50,14 +50,20 @@ unset($_SESSION['tipo_mensaje']);
 </div>
 
 <div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">
-            <i class="bi bi-car-front me-2"></i> Vehículos registrados
-        </h5>
+<!-- En la sección de card-header, después del botón de Nuevo Vehículo -->
+<div class="card-header py-3 d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0">
+        <i class="bi bi-car-front me-2"></i> Vehículos registrados
+    </h5>
+    <div>
+        <a href="sanciones.php" class="btn btn-warning me-2">
+            <i class="bi bi-exclamation-triangle"></i> Ver vehículos sancionados
+        </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoVehiculoModal">
             <i class="bi bi-plus-lg"></i> Nuevo Vehículo
         </button>
     </div>
+</div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-striped table-hover" id="tablaVehiculos" width="100%" cellspacing="0">
@@ -138,10 +144,6 @@ unset($_SESSION['tipo_mensaje']);
                                                 <i class="bi bi-exclamation-triangle"></i>
                                             </button>
                                         <?php else: ?>
-                                            <button type="button" class="btn btn-success btn-sm"
-                                                onclick="anularSancion(<?php echo $vehiculo['id']; ?>)">
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -271,7 +273,7 @@ unset($_SESSION['tipo_mensaje']);
 <div class="modal fade" id="sancionarModal" tabindex="-1" aria-labelledby="sancionarModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="formSancionar" action="../Processings/procesar_sancion.php" method="post">
+            <form id="formSancionar" action="../Processings/procesar_sancion.php" method="post" class="needs-validation" novalidate>
                 <div class="modal-header">
                     <h5 class="modal-title" id="sancionarModalLabel">
                         <i class="bi bi-exclamation-triangle me-2"></i> Aplicar Sanción
@@ -288,7 +290,7 @@ unset($_SESSION['tipo_mensaje']);
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="articulo_id" class="form-label">Artículo de Sanción</label>
+                        <label for="articulo_id" class="form-label">Artículo de Sanción <span class="text-danger">*</span></label>
                         <select class="form-select" id="articulo_id" name="articulo_id" required>
                             <option value="">Seleccionar artículo...</option>
                             <?php if (is_array($articulos) && !isset($articulos['error'])): ?>
@@ -297,10 +299,16 @@ unset($_SESSION['tipo_mensaje']);
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
+                        <div class="invalid-feedback">
+                            Por favor seleccione un artículo de sanción
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="motivo" class="form-label">Motivo</label>
+                        <label for="motivo" class="form-label">Motivo <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="motivo" name="motivo" rows="3" required placeholder="Describa el motivo de la sanción"></textarea>
+                        <div class="invalid-feedback">
+                            Por favor ingrese el motivo de la sanción
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -345,6 +353,9 @@ unset($_SESSION['tipo_mensaje']);
 
 <!-- Script para la funcionalidad -->
 <script>
+/**
+ * Script para la gestión de vehículos y sanciones
+ */
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar tooltips de Bootstrap
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -361,8 +372,68 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true
         });
     }
+    
+    // Validación de formularios con Bootstrap
+    const forms = document.querySelectorAll('.needs-validation');
+    
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Mostrar un mensaje de error general
+                if (form.id === 'formSancionar') {
+                    // Crear un div para mostrar el error general
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'alert alert-danger mt-3';
+                    errorDiv.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Por favor complete todos los campos requeridos.';
+                    
+                    // Agregar al inicio del formulario
+                    const firstChild = form.querySelector('.modal-body').firstChild;
+                    form.querySelector('.modal-body').insertBefore(errorDiv, firstChild);
+                    
+                    // Eliminar después de 4 segundos
+                    setTimeout(() => {
+                        errorDiv.remove();
+                    }, 4000);
+                }
+            }
+            
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // Inicializar el formulario de sancionar para validación personalizada
+    const formSancionar = document.getElementById('formSancionar');
+    if (formSancionar) {
+        const articuloSelect = document.getElementById('articulo_id');
+        const motivoTextarea = document.getElementById('motivo');
+        
+        // Validar el select cuando cambia
+        articuloSelect.addEventListener('change', function() {
+            if (this.value === '') {
+                this.setCustomValidity('Debe seleccionar un artículo de sanción');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+        
+        // Validar el textarea cuando cambia
+        motivoTextarea.addEventListener('input', function() {
+            if (this.value.trim() === '') {
+                this.setCustomValidity('Debe ingresar un motivo para la sanción');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
 });
 
+/**
+ * Función para editar un vehículo
+ * @param {number} id - ID del vehículo
+ */
 function editarVehiculo(id) {
     // Obtener datos del vehículo por AJAX
     fetch('../Processings/obtener_vehiculo.php?id=' + id)
@@ -388,6 +459,10 @@ function editarVehiculo(id) {
         });
 }
 
+/**
+ * Función para ver detalles de un vehículo
+ * @param {number} id - ID del vehículo
+ */
 function verDetalleVehiculo(id) {
     const detalleModal = new bootstrap.Modal(document.getElementById('detalleVehiculoModal'));
     const detalleContent = document.getElementById('detalleVehiculoContent');
@@ -415,13 +490,29 @@ function verDetalleVehiculo(id) {
         });
 }
 
+/**
+ * Función para mostrar el formulario de sanción
+ * @param {number} id - ID del vehículo
+ * @param {string} placa - Placa del vehículo
+ * @param {string} movil - Número de móvil del vehículo
+ */
 function mostrarSancionForm(id, placa, movil) {
     document.getElementById('sancion_vehiculo_id').value = id;
     document.getElementById('sancion_vehiculo_info').value = `Placa: ${placa} | Móvil: ${movil}`;
     
+    // Limpiar validaciones previas
+    document.getElementById('formSancionar').classList.remove('was-validated');
+    document.getElementById('articulo_id').value = '';
+    document.getElementById('motivo').value = '';
+    
     new bootstrap.Modal(document.getElementById('sancionarModal')).show();
 }
 
+/**
+ * Función para confirmar eliminación de un vehículo
+ * @param {number} id - ID del vehículo
+ * @param {string} placa - Placa del vehículo
+ */
 function confirmarEliminar(id, placa) {
     document.getElementById('eliminar_id').value = id;
     document.getElementById('eliminar_placa').textContent = placa;
@@ -429,6 +520,10 @@ function confirmarEliminar(id, placa) {
     new bootstrap.Modal(document.getElementById('confirmarEliminarModal')).show();
 }
 
+/**
+ * Función para anular la sanción de un vehículo
+ * @param {number} vehiculoId - ID del vehículo
+ */
 function anularSancion(vehiculoId) {
     // Redireccionar a la página de anular sanción
     window.location.href = 'anular_sancion.php?vehiculo_id=' + vehiculoId;

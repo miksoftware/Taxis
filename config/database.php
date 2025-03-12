@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Bogota');
 class Database {
     private $pdo;
     
@@ -17,6 +18,7 @@ class Database {
     }
     
     public function getPdo() {
+        $this->pdo->exec("SET time_zone = '-05:00'"); 
         return $this->pdo;
     }
 }
