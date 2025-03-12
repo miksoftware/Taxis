@@ -136,7 +136,7 @@ class Vehiculo
             }
 
             // Verificar que el estado sea válido
-            $estados_validos = ['disponible', 'en_servicio', 'sancionado', 'mantenimiento', 'inactivo'];
+            $estados_validos = ['disponible', 'ocupado', 'sancionado', 'mantenimiento', 'inactivo'];
             if (!in_array($estado, $estados_validos)) {
                 return ['error' => true, 'mensaje' => 'Estado no válido'];
             }
@@ -225,16 +225,40 @@ class Vehiculo
     /**
      * Obtiene todos los vehículos
      */
-    public function obtenerTodos()
-    {
+    public function obtenerTodos($filtros = []) {
         try {
-            $sql = "SELECT * FROM vehiculos ORDER BY numero_movil ASC";
+            $sql = "SELECT * FROM vehiculos WHERE 1=1";
+            $params = [];
+            
+            // Aplicar filtro por estado si se proporciona
+            if (isset($filtros['estado'])) {
+                $sql .= " AND estado = :estado";
+                $params[':estado'] = $filtros['estado'];
+            }
+            
+            // Otros filtros que puedas necesitar
+            if (isset($filtros['placa'])) {
+                $sql .= " AND placa LIKE :placa";
+                $params[':placa'] = '%' . $filtros['placa'] . '%';
+            }
+            
+            if (isset($filtros['numero_movil'])) {
+                $sql .= " AND numero_movil LIKE :numero_movil";
+                $params[':numero_movil'] = '%' . $filtros['numero_movil'] . '%';
+            }
+            
+            // Ordenar resultados
+            $sql .= " ORDER BY numero_movil ASC";
+            
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute();
-
+            $stmt->execute($params);
+            
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            return ['error' => true, 'mensaje' => 'Error al obtener vehículos: ' . $e->getMessage()];
+            return [
+                'error' => true,
+                'mensaje' => 'Error al obtener vehículos: ' . $e->getMessage()
+            ];
         }
     }
 

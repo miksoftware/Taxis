@@ -96,12 +96,12 @@ unset($_SESSION['tipo_mensaje']);
                                         </button>
                                         <?php if ($articulo['estado'] === 'activo'): ?>
                                             <button type="button" class="btn btn-warning btn-sm"
-                                                onclick="cambiarEstado(<?php echo $articulo['id']; ?>, 0)">
+                                                onclick="cambiarEstado(<?php echo $articulo['id']; ?>, 'inactivo')">
                                                 <i class="bi bi-toggle-on"></i>
                                             </button>
                                         <?php else: ?>
                                             <button type="button" class="btn btn-secondary btn-sm"
-                                                onclick="cambiarEstado(<?php echo $articulo['id']; ?>, 1)">
+                                                onclick="cambiarEstado(<?php echo $articulo['id']; ?>, 'activo')">
                                                 <i class="bi bi-toggle-off"></i>
                                             </button>
                                         <?php endif; ?>
@@ -334,15 +334,15 @@ unset($_SESSION['tipo_mensaje']);
         document.getElementById('estado_valor').value = estado;
 
         // Configurar textos según el estado
-        if (estado == 1) {
-            document.getElementById('titulo_estado').textContent = "Activar Artículo";
-            document.getElementById('texto_estado').textContent = "¿Está seguro que desea activar este artículo? Esta acción permitirá que sea utilizado al aplicar sanciones.";
-            document.getElementById('advertencia_estado').style.display = 'none';
-        } else {
+        if (estado == 'inactivo') { 
             document.getElementById('titulo_estado').textContent = "Desactivar Artículo";
             document.getElementById('texto_estado').textContent = "¿Está seguro que desea desactivar este artículo? Esta acción impedirá que sea utilizado al aplicar nuevas sanciones.";
             document.getElementById('texto_advertencia').textContent = "La desactivación no afectará a las sanciones ya aplicadas con este artículo.";
             document.getElementById('advertencia_estado').style.display = 'block';
+        } else {
+            document.getElementById('titulo_estado').textContent = "Activar Artículo";
+            document.getElementById('texto_estado').textContent = "¿Está seguro que desea activar este artículo? Esta acción permitirá que sea utilizado al aplicar sanciones.";
+            document.getElementById('advertencia_estado').style.display = 'none';
         }
 
         new bootstrap.Modal(document.getElementById('cambiarEstadoModal')).show();

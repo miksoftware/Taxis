@@ -220,7 +220,6 @@ class VehiculoController {
     private function traducirEstado($estado) {
         $estados = [
             'disponible' => 'Disponible',
-            'en_servicio' => 'En servicio',
             'sancionado' => 'Sancionado',
             'mantenimiento' => 'En mantenimiento',
             'inactivo' => 'Inactivo'

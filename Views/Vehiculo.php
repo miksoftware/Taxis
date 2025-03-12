@@ -94,11 +94,7 @@ unset($_SESSION['tipo_mensaje']);
                                             $estado_texto = 'Disponible';
                                             $badge_class = 'bg-success';
                                             break;
-                                        case 'en_servicio':
-                                            $estado_texto = 'En servicio';
-                                            $badge_class = 'bg-primary';
-                                            break;
-                                        case 'sancionado':
+                                      case 'sancionado':
                                             $estado_texto = 'Sancionado';
                                             $badge_class = 'bg-danger';
                                             break;
@@ -186,7 +182,6 @@ unset($_SESSION['tipo_mensaje']);
                         <label for="estado" class="form-label">Estado</label>
                         <select class="form-select" id="estado" name="estado" required>
                             <option value="disponible">Disponible</option>
-                            <option value="en_servicio">En Servicio</option>
                             <option value="mantenimiento">Mantenimiento</option>
                             <option value="inactivo">Inactivo</option>
                         </select>
@@ -228,7 +223,6 @@ unset($_SESSION['tipo_mensaje']);
                         <label for="editar_estado" class="form-label">Estado</label>
                         <select class="form-select" id="editar_estado" name="estado" required>
                             <option value="disponible">Disponible</option>
-                            <option value="en_servicio">En Servicio</option>
                             <option value="mantenimiento">Mantenimiento</option>
                             <option value="inactivo">Inactivo</option>
                         </select>

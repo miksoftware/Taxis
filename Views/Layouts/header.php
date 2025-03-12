@@ -71,6 +71,11 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
+                        <li class="nav-item">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'servicios.php' ? 'active' : ''; ?>" href="servicios.php">
+                                    <i class="bi bi-receipt-cutoff"></i> Recepción
+                                </a>
+                            </li>
                         <?php if ($usuario_rol === 'administrador'): ?>
                             <li class="nav-item">
                                 <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'usuarios.php' ? 'active' : ''; ?>" href="usuarios.php">

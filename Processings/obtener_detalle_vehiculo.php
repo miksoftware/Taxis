@@ -73,11 +73,7 @@ if (!isset($vehiculo['historial_sanciones'])) {
                                 case 'disponible':
                                     $estado_texto = 'Disponible';
                                     $badge_class = 'bg-success';
-                                    break;
-                                case 'en_servicio':
-                                    $estado_texto = 'En servicio';
-                                    $badge_class = 'bg-primary';
-                                    break;
+                                    break;         
                                 case 'sancionado':
                                     $estado_texto = 'Sancionado';
                                     $badge_class = 'bg-danger';
@@ -153,12 +149,6 @@ if (!isset($vehiculo['historial_sanciones'])) {
                             <td><?php echo nl2br(htmlspecialchars($vehiculo['sancion_activa']['motivo'])); ?></td>
                         </tr>
                     </table>
-                    
-                    <div class="mt-3 text-center">
-                        <a href="anular_sancion.php?vehiculo_id=<?php echo $vehiculo['id']; ?>" class="btn btn-success">
-                            <i class="bi bi-check-circle me-1"></i> Anular Sanción
-                        </a>
-                    </div>
                 </div>
             </div>
         <?php endif; ?>
