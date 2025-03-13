@@ -274,7 +274,7 @@ class Usuario {
     public function verificarCredenciales($username, $password) {
         try {
             // El username puede ser el nombre de usuario o el email
-            $sql = "SELECT * FROM usuarios WHERE (username = :username OR email = :email) AND activo = 1";
+            $sql = "SELECT * FROM usuarios WHERE (username = :username OR email = :email) AND estado = 'activo'";
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':username', $username);
             $stmt->bindParam(':email', $username);
@@ -336,7 +336,7 @@ class Usuario {
     public function verificarTokenRecuerdo($token) {
         try {
             // Buscar usuarios con token
-            $sql = "SELECT * FROM usuarios WHERE fecha_token > (NOW() - INTERVAL 30 DAY) AND activo = 1";
+            $sql = "SELECT * FROM usuarios WHERE fecha_token > (NOW() - INTERVAL 30 DAY) AND estado = 'activo'";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute();
             
@@ -402,5 +402,155 @@ class Usuario {
             return ['error' => true, 'mensaje' => 'Error al eliminar usuario: ' . $e->getMessage()];
         }
     }
+/**
+     * Obtiene estadísticas de servicios por usuario en un rango de fechas
+     */
+    public function obtenerEstadisticasUsuario($usuario_id, $fecha_inicio, $fecha_fin) {
+        try {
+            // Validar parámetros
+            $fecha_inicio = $fecha_inicio . ' 00:00:00';
+            $fecha_fin = $fecha_fin . ' 23:59:59';
+            
+            // Estadísticas básicas de servicios
+            $sql = "
+                SELECT 
+                    COUNT(*) as total_servicios,
+                    SUM(CASE WHEN estado = 'cancelado' THEN 1 ELSE 0 END) as servicios_cancelados,
+                    SUM(CASE WHEN estado = 'finalizado' THEN 1 ELSE 0 END) as servicios_finalizados,
+                    SUM(CASE WHEN estado = 'pendiente' THEN 1 ELSE 0 END) as servicios_pendientes,
+                    SUM(CASE WHEN estado = 'asignado' THEN 1 ELSE 0 END) as servicios_asignados,
+                    MIN(fecha_solicitud) as primera_solicitud,
+                    MAX(fecha_solicitud) as ultima_solicitud
+                FROM servicios
+                WHERE usuario_id = :usuario_id
+                AND fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin
+            ";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
+            $stmt->bindParam(':fecha_inicio', $fecha_inicio, PDO::PARAM_STR);
+            $stmt->bindParam(':fecha_fin', $fecha_fin, PDO::PARAM_STR);
+            $stmt->execute();
+            
+            $estadisticas = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Obtener detalles de servicios para este usuario en el rango
+            $sql_servicios = "
+                SELECT 
+                    s.id,
+                    s.cliente_id,
+                    s.vehiculo_id,
+                    s.direccion_id,
+                    s.estado,
+                    s.fecha_solicitud,
+                    s.fecha_asignacion,
+                    s.fecha_fin,
+                    s.observaciones,
+                    c.telefono as cliente_telefono,
+                    c.nombre as cliente_nombre,
+                    v.numero_movil,
+                    v.placa,
+                    d.direccion
+                FROM servicios s
+                LEFT JOIN clientes c ON s.cliente_id = c.id
+                LEFT JOIN vehiculos v ON s.vehiculo_id = v.id
+                LEFT JOIN direcciones d ON s.direccion_id = d.id
+                WHERE s.usuario_id = :usuario_id
+                AND s.fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin
+                ORDER BY s.fecha_solicitud DESC
+            ";
+            
+            $stmt_servicios = $this->pdo->prepare($sql_servicios);
+            $stmt_servicios->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
+            $stmt_servicios->bindParam(':fecha_inicio', $fecha_inicio, PDO::PARAM_STR);
+            $stmt_servicios->bindParam(':fecha_fin', $fecha_fin, PDO::PARAM_STR);
+            $stmt_servicios->execute();
+            
+            $servicios = $stmt_servicios->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Calcular promedio de tiempo de asignación
+            $sql_tiempo = "
+                SELECT 
+                    AVG(TIMESTAMPDIFF(MINUTE, fecha_solicitud, fecha_asignacion)) as promedio_asignacion,
+                    AVG(TIMESTAMPDIFF(MINUTE, fecha_asignacion, fecha_fin)) as promedio_servicio
+                FROM servicios
+                WHERE usuario_id = :usuario_id
+                AND fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin
+                AND estado = 'finalizado'
+                AND fecha_asignacion IS NOT NULL
+                AND fecha_fin IS NOT NULL
+            ";
+            
+            $stmt_tiempo = $this->pdo->prepare($sql_tiempo);
+            $stmt_tiempo->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
+            $stmt_tiempo->bindParam(':fecha_inicio', $fecha_inicio, PDO::PARAM_STR);
+            $stmt_tiempo->bindParam(':fecha_fin', $fecha_fin, PDO::PARAM_STR);
+            $stmt_tiempo->execute();
+            
+            $tiempos = $stmt_tiempo->fetch(PDO::FETCH_ASSOC);
+            
+            // Combinar resultados
+            $resultado = [
+                'estadisticas' => $estadisticas,
+                'servicios' => $servicios,
+                'tiempos' => $tiempos,
+                'usuario_id' => $usuario_id,
+                'fecha_inicio' => $fecha_inicio,
+                'fecha_fin' => $fecha_fin
+            ];
+            
+            return $resultado;
+            
+        } catch (PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => 'Error al obtener estadísticas de usuario: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Obtiene la lista de usuarios con conteo básico de servicios
+     */
+    public function obtenerResumenUsuarios($fecha_inicio, $fecha_fin) {
+        try {
+            // Validar parámetros
+            $fecha_inicio = $fecha_inicio . ' 00:00:00';
+            $fecha_fin = $fecha_fin . ' 23:59:59';
+            
+            $sql = "
+                SELECT 
+                    u.id,
+                    u.nombre,
+                    u.apellidos,
+                    u.username,
+                    u.email,
+                    u.rol,
+                    COUNT(s.id) as total_servicios,
+                    SUM(CASE WHEN s.estado = 'cancelado' THEN 1 ELSE 0 END) as servicios_cancelados,
+                    SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) as servicios_finalizados
+                FROM usuarios u
+                LEFT JOIN servicios s ON u.id = s.usuario_id AND s.fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin
+                GROUP BY u.id
+                ORDER BY total_servicios DESC
+            ";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':fecha_inicio', $fecha_inicio, PDO::PARAM_STR);
+            $stmt->bindParam(':fecha_fin', $fecha_fin, PDO::PARAM_STR);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => 'Error al obtener resumen de usuarios: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
 }
 ?>

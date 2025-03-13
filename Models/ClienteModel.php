@@ -174,4 +174,67 @@ class Cliente
             return ['error' => true, 'mensaje' => 'Error al obtener servicios: ' . $e->getMessage()];
         }
     }
+
+    /**
+     * Lista clientes con paginación
+     */
+    public function listarPaginado($filtro = '', $limite = 15, $offset = 0)
+    {
+        try {
+            $sql = "SELECT * FROM clientes WHERE 1=1";
+            $params = [];
+
+            if (!empty($filtro)) {
+                $sql .= " AND (telefono LIKE :filtro OR nombre LIKE :filtro)";
+                $params[':filtro'] = "%$filtro%";
+            }
+
+            $sql .= " ORDER BY fecha_registro DESC LIMIT :limite OFFSET :offset";
+
+            $stmt = $this->pdo->prepare($sql);
+
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
+
+            $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => 'Error al listar clientes: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Cuenta el total de clientes (para paginación)
+     */
+    public function contarTotal($filtro = '')
+    {
+        try {
+            $sql = "SELECT COUNT(*) FROM clientes WHERE 1=1";
+            $params = [];
+
+            if (!empty($filtro)) {
+                $sql .= " AND (telefono LIKE :filtro OR nombre LIKE :filtro)";
+                $params[':filtro'] = "%$filtro%";
+            }
+
+            $stmt = $this->pdo->prepare($sql);
+
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
+
+            $stmt->execute();
+
+            return $stmt->fetchColumn();
+        } catch (PDOException $e) {
+            return 0;
+        }
+    }
 }

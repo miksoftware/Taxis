@@ -236,5 +236,186 @@ class ServicioController {
         }
     }
 
+    /**
+ * Cuenta la cantidad de servicios de un cliente en un mes específico
+ */
+public function contarPorClienteMes($cliente_id, $mes, $anio) {
+    if (!$cliente_id || !$mes || !$anio) {
+        return 0;
+    }
+    
+    try {
+        $inicio_mes = sprintf('%d-%02d-01 00:00:00', $anio, $mes);
+        $ultimo_dia = date('t', strtotime($inicio_mes)); // Obtiene el último día del mes
+        $fin_mes = sprintf('%d-%02d-%d 23:59:59', $anio, $mes, $ultimo_dia);
+        
+        $sql = "
+            SELECT COUNT(*) as total 
+            FROM servicios 
+            WHERE cliente_id = :cliente_id 
+            AND fecha_solicitud BETWEEN :inicio_mes AND :fin_mes
+        ";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+        $stmt->bindParam(':inicio_mes', $inicio_mes, PDO::PARAM_STR);
+        $stmt->bindParam(':fin_mes', $fin_mes, PDO::PARAM_STR);
+        $stmt->execute();
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        return intval($resultado['total']);
+    } catch (PDOException $e) {
+        error_log('Error al contar servicios por mes: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+/**
+ * Cuenta el total de servicios de un cliente
+ */
+public function contarPorCliente($cliente_id) {
+    if (!$cliente_id) {
+        return 0;
+    }
+    
+    try {
+        $sql = "SELECT COUNT(*) as total FROM servicios WHERE cliente_id = :cliente_id";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        return intval($resultado['total']);
+    } catch (PDOException $e) {
+        error_log('Error al contar servicios totales: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+/**
+ * Obtiene el historial de servicios de un cliente con paginación
+ */
+public function obtenerHistorialCliente($cliente_id, $limite = 10, $offset = 0) {
+    if (!$cliente_id) {
+        return ['error' => true, 'mensaje' => 'ID de cliente no proporcionado'];
+    }
+    
+    try {
+        // Consulta para obtener los servicios
+        $sql = "
+            SELECT s.*, 
+                   d.direccion,
+                   v.numero_movil, 
+                   v.placa
+            FROM servicios s
+            LEFT JOIN direcciones d ON s.direccion_id = d.id
+            LEFT JOIN vehiculos v ON s.vehiculo_id = v.id
+            WHERE s.cliente_id = :cliente_id
+            ORDER BY s.fecha_solicitud DESC
+            LIMIT :limite OFFSET :offset
+        ";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+        $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $servicios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Consulta para contar el total de servicios
+        $sql_count = "SELECT COUNT(*) as total FROM servicios WHERE cliente_id = :cliente_id";
+        
+        $stmt_count = $this->pdo->prepare($sql_count);
+        $stmt_count->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+        $stmt_count->execute();
+        
+        $total = $stmt_count->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        return [
+            'servicios' => $servicios,
+            'total' => $total
+        ];
+    } catch (PDOException $e) {
+        return [
+            'error' => true,
+            'mensaje' => 'Error al obtener historial de servicios: ' . $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * Obtiene estadísticas de servicios de un cliente
+ */
+public function obtenerEstadisticasCliente($cliente_id) {
+    if (!$cliente_id) {
+        return [
+            'total' => 0,
+            'finalizados' => 0,
+            'cancelados' => 0,
+            'frecuencia_mensual' => 0,
+            'ultima_solicitud' => null
+        ];
+    }
+    
+    try {
+        $sql = "
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
+                SUM(CASE WHEN estado = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
+                MAX(fecha_solicitud) as ultima_solicitud
+            FROM servicios
+            WHERE cliente_id = :cliente_id
+        ";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Calcular frecuencia mensual (promedio servicios por mes)
+        $sql_primer_servicio = "
+            SELECT MIN(fecha_solicitud) as primer_servicio
+            FROM servicios
+            WHERE cliente_id = :cliente_id
+        ";
+        
+        $stmt_primer = $this->pdo->prepare($sql_primer_servicio);
+        $stmt_primer->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+        $stmt_primer->execute();
+        
+        $primer_servicio = $stmt_primer->fetch(PDO::FETCH_ASSOC)['primer_servicio'];
+        
+        if ($primer_servicio) {
+            $fecha_inicio = new DateTime($primer_servicio);
+            $fecha_actual = new DateTime();
+            
+            $diff = $fecha_inicio->diff($fecha_actual);
+            $meses = ($diff->y * 12) + $diff->m;
+            
+            if ($meses > 0) {
+                $resultado['frecuencia_mensual'] = round($resultado['total'] / $meses, 1);
+            } else {
+                $resultado['frecuencia_mensual'] = $resultado['total']; // Todo en el mismo mes
+            }
+        } else {
+            $resultado['frecuencia_mensual'] = 0;
+        }
+        
+        return $resultado;
+    } catch (PDOException $e) {
+        error_log('Error al obtener estadísticas del cliente: ' . $e->getMessage());
+        return [
+            'total' => 0,
+            'finalizados' => 0,
+            'cancelados' => 0,
+            'frecuencia_mensual' => 0,
+            'ultima_solicitud' => null
+        ];
+    }
+}
     
 }

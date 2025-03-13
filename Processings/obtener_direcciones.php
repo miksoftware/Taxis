@@ -1,25 +1,20 @@
 <?php
-// filepath: c:\xampp\htdocs\GitHub\Taxis\Processings\obtener_direcciones.php
 // Iniciar sesión
 session_start();
 
 // Verificar autenticación
 if (!isset($_SESSION['usuario_id'])) {
-    $respuesta = [
-        'error' => true, 
-        'mensaje' => 'No autorizado', 
-        'redirect' => '../Views/Login.php'
-    ];
-    echo json_encode($respuesta);
+    echo json_encode(['error' => true, 'mensaje' => 'No autorizado', 'redirect' => '../Views/Login.php']);
     exit;
 }
 
-// Verificar que se recibe un ID de cliente
-if (!isset($_GET['cliente_id']) || empty($_GET['cliente_id'])) {
-    $respuesta = ['error' => true, 'mensaje' => 'ID de cliente no proporcionado'];
-    echo json_encode($respuesta);
+// Verificar parámetros
+if (!isset($_GET['cliente_id'])) {
+    echo json_encode(['error' => true, 'mensaje' => 'ID de cliente no proporcionado']);
     exit;
 }
+
+$cliente_id = intval($_GET['cliente_id']);
 
 // Incluir la conexión a la base de datos
 require_once '../config/database.php';
@@ -30,23 +25,27 @@ $pdo = $db->getPdo();
 require_once '../Controllers/DireccionController.php';
 $direccionController = new DireccionController($pdo);
 
-// Obtener direcciones frecuentes/recientes del cliente
-$cliente_id = intval($_GET['cliente_id']);
-$limite = isset($_GET['limite']) ? intval($_GET['limite']) : 5;
+// Obtener direcciones del cliente
+$direcciones = $direccionController->obtenerPorCliente($cliente_id);
 
-$direcciones = $direccionController->obtenerDireccionesFrecuentes($cliente_id, $limite);
-
-// Preparar la respuesta
-if (isset($direcciones['error']) && $direcciones['error']) {
-    $respuesta = $direcciones;
+if (isset($direcciones['error'])) {
+    echo json_encode($direcciones);
 } else {
-    $respuesta = [
-        'error' => false,
-        'direcciones' => $direcciones
-    ];
+    // Filtrar solo direcciones activas si se solicita (por defecto)
+    $solo_activas = !isset($_GET['mostrar_inactivas']) || $_GET['mostrar_inactivas'] == '0';
+    
+    if ($solo_activas) {
+        $direcciones = array_filter($direcciones, function($dir) {
+            return !isset($dir['activa']) || $dir['activa'] == 1;
+        });
+        // Reindexar array después de filtrar
+        $direcciones = array_values($direcciones);
+    }
+    
+    echo json_encode([
+        'error' => false, 
+        'direcciones' => $direcciones,
+        'total' => count($direcciones),
+        'solo_activas' => $solo_activas
+    ]);
 }
-
-// Devolver respuesta JSON
-header('Content-Type: application/json');
-echo json_encode($respuesta);
-exit;

@@ -28,18 +28,18 @@ class Servicio
             $stmt->bindParam(':estado', $datos['estado'], PDO::PARAM_STR);
             $stmt->bindParam(':fecha_solicitud', $datos['fecha_solicitud'], PDO::PARAM_STR);
             $stmt->bindParam(':operador_id', $datos['operador_id'], PDO::PARAM_INT);
-            
+
             $stmt->execute();
             $id = $this->pdo->lastInsertId();
-            
+
             // Si el servicio es creado correctamente, actualizar la fecha de último uso de la dirección
             $sql_dir = "UPDATE direcciones SET ultimo_uso = NOW() WHERE id = :direccion_id";
             $stmt_dir = $this->pdo->prepare($sql_dir);
             $stmt_dir->bindParam(':direccion_id', $datos['direccion_id'], PDO::PARAM_INT);
             $stmt_dir->execute();
-            
+
             $this->pdo->commit();
-            
+
             return [
                 'error' => false,
                 'mensaje' => 'Servicio creado correctamente',
@@ -223,6 +223,53 @@ class Servicio
             return true;
         } catch (PDOException $e) {
             return false;
+        }
+    }
+
+    /**
+     * Cuenta servicios de un cliente en un mes específico
+     */
+    public function contarServiciosPorClienteMes($cliente_id, $mes, $anio)
+    {
+        try {
+            $inicio_mes = sprintf('%d-%02d-01 00:00:00', $anio, $mes);
+            $ultimo_dia = date('t', strtotime($inicio_mes));
+            $fin_mes = sprintf('%d-%02d-%d 23:59:59', $anio, $mes, $ultimo_dia);
+
+            $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) as total 
+            FROM servicios 
+            WHERE cliente_id = :cliente_id 
+            AND fecha_solicitud BETWEEN :inicio_mes AND :fin_mes
+        ");
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->bindParam(':inicio_mes', $inicio_mes, PDO::PARAM_STR);
+            $stmt->bindParam(':fin_mes', $fin_mes, PDO::PARAM_STR);
+            $stmt->execute();
+
+            return $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        } catch (PDOException $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Cuenta el total de servicios de un cliente
+     */
+    public function contarServiciosPorCliente($cliente_id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) as total 
+            FROM servicios 
+            WHERE cliente_id = :cliente_id
+        ");
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        } catch (PDOException $e) {
+            return 0;
         }
     }
 }

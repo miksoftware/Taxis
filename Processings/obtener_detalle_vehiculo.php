@@ -168,7 +168,6 @@ if (!isset($vehiculo['historial_sanciones'])) {
                         <tr>
                             <th>Artículo</th>
                             <th>Motivo</th>
-                            <th>Duración</th>
                             <th>Fecha Inicio</th>
                             <th>Fecha Fin</th>
                             <th>Estado</th>
@@ -179,7 +178,6 @@ if (!isset($vehiculo['historial_sanciones'])) {
                             <tr>
                                 <td><?php echo htmlspecialchars($sancion['articulo_codigo'] . ' - ' . $sancion['articulo_descripcion']); ?></td>
                                 <td><?php echo nl2br(htmlspecialchars($sancion['motivo'])); ?></td>
-                                <td><?php echo htmlspecialchars($sancion['tiempo_sancion']); ?> minutos</td>
                                 <td><?php echo date('d/m/Y H:i', strtotime($sancion['fecha_inicio'])); ?></td>
                                 <td><?php echo date('d/m/Y H:i', strtotime($sancion['fecha_fin'])); ?></td>
                                 <td>

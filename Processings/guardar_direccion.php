@@ -86,19 +86,27 @@ if (!$direccion_existe) {
     
     // Si tiene menos de 5 direcciones, marcar como frecuente
     if ($total_direcciones < 5) {
-        $direccionController->marcarComoFrecuente($direccion_id);
+        $direccionController->marcarFrecuente($direccion_id);
     }
 }
 
 // Actualizar fecha de último uso de la dirección
 $direccionController->actualizarUltimoUso($direccion_id);
+// Para depuración
+error_log("Dirección guardada: " . print_r([
+    'cliente_id' => $cliente_id,
+    'direccion_id' => $direccion_id,
+    'direccion' => $direccion,
+    'existe' => $direccion_existe
+], true));
 
 // Devolver respuesta
 $respuesta = [
     'error' => false,
     'mensaje' => $direccion_existe ? 'Dirección existente seleccionada' : 'Dirección guardada correctamente',
     'direccion_id' => $direccion_id,
-    'es_nueva' => !$direccion_existe
+    'es_nueva' => !$direccion_existe,
+    'direccion' => $direccion 
 ];
 
 echo json_encode($respuesta);

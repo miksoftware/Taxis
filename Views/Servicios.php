@@ -92,11 +92,15 @@ unset($_SESSION['tipo_mensaje']);
                 <div class="col-md-6">
                     <label for="condicionServicio" class="form-label">Condición del servicio:</label>
                     <select id="condicionServicio" class="form-select">
-                        <option value="normal">Normal</option>
-                        <option value="urgente">Urgente</option>
-                        <option value="preferencial">Preferencial</option>
-                        <option value="especial">Especial</option>
-                        <option value="programado">Programado</option>
+                        <option value="ninguno" selected>Ninguno</option>
+                        <option value="aire">Aire</option>
+                        <option value="baul">Baúl</option>
+                        <option value="mascota">Mascota</option>
+                        <option value="parrilla">Parrilla</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="daviplata">Daviplata</option>
+                        <option value="polarizados">Polarizados</option>
+                        <option value="silla_ruedas">Silla de Ruedas</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -124,9 +128,9 @@ unset($_SESSION['tipo_mensaje']);
             <table class="table table-hover" id="tablaPendientes">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Cliente</th>
                         <th>Dirección</th>
+                        <th>Observaciones</th>
                         <th>Solicitud</th>
                         <th>Condición</th>
                         <th>Acción</th>
@@ -136,9 +140,11 @@ unset($_SESSION['tipo_mensaje']);
                     <?php if (!empty($servicios_pendientes)): ?>
                         <?php foreach ($servicios_pendientes as $servicio): ?>
                             <tr>
-                                <td><?= $servicio['id'] ?></td>
                                 <td><?= $servicio['telefono'] ?></td>
                                 <td><?= $servicio['direccion'] ?></td>
+                                <td>
+                                    <?= empty($servicio['observaciones']) ? 'sin observaciones' : $servicio['observaciones'] ?>
+                                </td>
                                 <td><?= date('H:i', strtotime($servicio['fecha_solicitud'])) ?></td>
                                 <td>
                                     <?php if ($servicio['condicion'] == 'urgente'): ?>
@@ -187,7 +193,6 @@ unset($_SESSION['tipo_mensaje']);
             <table class="table table-hover" id="tablaEnCurso">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Cliente</th>
                         <th>Dirección</th>
                         <th>Vehículo</th>
@@ -202,7 +207,6 @@ unset($_SESSION['tipo_mensaje']);
                     if (!empty($servicios_en_curso)): ?>
                         <?php foreach ($servicios_en_curso as $servicio): ?>
                             <tr>
-                                <td><?= $servicio['id'] ?></td>
                                 <td><?= $servicio['telefono'] ?></td>
                                 <td><?= $servicio['direccion'] ?></td>
                                 <td><?= $servicio['placa'] ?></td>
@@ -408,42 +412,7 @@ unset($_SESSION['tipo_mensaje']);
             document.getElementById('nuevaDireccionForm').style.display = 'none';
             document.getElementById('nuevaDireccion').value = '';
         });
-
-        // Guardar nueva dirección
-        document.getElementById('guardarDireccion').addEventListener('click', function() {
-            const direccion = document.getElementById('nuevaDireccion').value.trim();
-
-            if (direccion && clienteActual) {
-                const formData = new FormData();
-                formData.append('cliente_id', clienteActual.id);
-                formData.append('direccion', direccion);
-
-                fetch('../Processings/guardar_direccion.php', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            alert('Error al guardar dirección: ' + data.mensaje);
-                        } else {
-                            document.getElementById('nuevaDireccionForm').style.display = 'none';
-                            document.getElementById('nuevaDireccion').value = '';
-
-                            // Seleccionar automáticamente la nueva dirección
-                            direccionSeleccionada = data.direccion_id;
-                            cargarDirecciones(clienteActual.id);
-
-                            // Mostrar formulario de detalles de servicio
-                            document.getElementById('detallesServicioForm').style.display = 'block';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error al guardar dirección');
-                    });
-            }
-        });
+       
 
         // Crear servicio
         document.getElementById('crearServicio').addEventListener('click', function() {
@@ -675,48 +644,68 @@ unset($_SESSION['tipo_mensaje']);
             });
         }
 
-        function cargarDirecciones(clienteId) {
-            fetch('../Processings/obtener_direcciones.php?cliente_id=' + clienteId)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert('Error al cargar direcciones: ' + data.mensaje);
-                    } else {
-                        const listaDirecciones = document.getElementById('listaDirecciones');
-                        listaDirecciones.innerHTML = '';
+        // Guardar nueva dirección
+        document.getElementById('guardarDireccion').addEventListener('click', function() {
+            const direccion = document.getElementById('nuevaDireccion').value.trim();
 
-                        if (data.direcciones.length > 0) {
-                            data.direcciones.forEach(dir => {
-                                const item = document.createElement('button');
-                                item.type = 'button';
-                                item.classList.add('list-group-item', 'list-group-item-action');
-                                item.innerHTML = `<i class="bi bi-geo-alt me-2"></i> ${dir.direccion}`;
-                                item.addEventListener('click', function() {
-                                    // Desmarcar selección anterior
-                                    listaDirecciones.querySelectorAll('button').forEach(btn => {
-                                        btn.classList.remove('active');
-                                    });
+            if (direccion && clienteActual) {
+                const formData = new FormData();
+                formData.append('cliente_id', clienteActual.id);
+                formData.append('direccion', direccion);
 
-                                    // Marcar selección actual
-                                    this.classList.add('active');
-                                    direccionSeleccionada = dir.id;
+                fetch('../Processings/guardar_direccion.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            alert('Error al guardar dirección: ' + data.mensaje);
+                        } else {
+                            document.getElementById('nuevaDireccionForm').style.display = 'none';
+                            document.getElementById('nuevaDireccion').value = '';
 
-                                    // Mostrar formulario de detalles de servicio
-                                    document.getElementById('detallesServicioForm').style.display = 'block';
+                            // IMPORTANTE: Añade console.log para depuración
+                            console.log('Dirección guardada:', data);
+
+                            // Seleccionar automáticamente la nueva dirección
+                            direccionSeleccionada = data.direccion_id;
+
+                            // En lugar de llamar a cargarDirecciones, crea la dirección directamente en el DOM
+                            // Esto evita una llamada AJAX adicional y garantiza que la dirección se muestre
+                            const listaDirecciones = document.getElementById('listaDirecciones');
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.classList.add('list-group-item', 'list-group-item-action', 'active'); // Ya seleccionada
+                            item.innerHTML = `<i class="bi bi-geo-alt me-2"></i> ${direccion}`;
+                            item.addEventListener('click', function() {
+                                // Desmarcar selección anterior
+                                listaDirecciones.querySelectorAll('button').forEach(btn => {
+                                    btn.classList.remove('active');
                                 });
 
-                                listaDirecciones.appendChild(item);
-                            });
-                        }
+                                // Marcar selección actual
+                                this.classList.add('active');
+                                direccionSeleccionada = data.direccion_id;
 
-                        document.getElementById('direccionesContainer').style.display = 'block';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al cargar direcciones');
-                });
-        }
+                                // Mostrar formulario de detalles de servicio
+                                document.getElementById('detallesServicioForm').style.display = 'block';
+                            });
+
+                            // Limpiar lista actual y agregar el nuevo elemento
+                            listaDirecciones.innerHTML = '';
+                            listaDirecciones.appendChild(item);
+
+                            // Mostrar formulario de detalles de servicio inmediatamente
+                            document.getElementById('detallesServicioForm').style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al guardar dirección');
+                    });
+            }
+        });
 
         function actualizarTiempos() {
             document.querySelectorAll('.tiempoTranscurrido').forEach(elem => {

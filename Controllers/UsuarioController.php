@@ -54,6 +54,8 @@ class UsuarioController
         return $this->usuarioModel->obtener($id);
     }
 
+    
+
     /**
      * Actualiza la información de un usuario
      * 
@@ -78,6 +80,8 @@ class UsuarioController
         // Actualizar usuario
         return $this->usuarioModel->actualizar($id, $datos);
     }
+
+    
 
     /**
      * Cambia el estado de un usuario (activo/inactivo)

@@ -48,8 +48,6 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                             <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($usuario_nombre); ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="perfil.php"><i class="bi bi-person me-2"></i> Perfil</a></li>
-                            <li><a class="dropdown-item" href="cambiar_password.php"><i class="bi bi-key me-2"></i> Cambiar contraseña</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -72,14 +70,19 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                             </a>
                         </li>
                         <li class="nav-item">
-                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'servicios.php' ? 'active' : ''; ?>" href="servicios.php">
-                                    <i class="bi bi-receipt-cutoff"></i> Recepción
-                                </a>
-                            </li>
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'servicios.php' ? 'active' : ''; ?>" href="servicios.php">
+                                <i class="bi bi-receipt-cutoff"></i> Recepción
+                            </a>
+                        </li>
                         <?php if ($usuario_rol === 'administrador'): ?>
                             <li class="nav-item">
                                 <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'usuarios.php' ? 'active' : ''; ?>" href="usuarios.php">
                                     <i class="bi bi-people"></i> Usuarios
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'clientes.php' ? 'active' : ''; ?>" href="clientes.php">
+                                    <i class="bi bi-people"></i> Clientes
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -102,12 +105,7 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                             <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'reportes.php' ? 'active' : ''; ?>" href="reportes.php">
                                 <i class="bi bi-bar-chart"></i> Reportes
                             </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'configuracion.php' ? 'active' : ''; ?>" href="configuracion.php">
-                                <i class="bi bi-gear"></i> Configuración
-                            </a>
-                        </li>
+                        </li>                       
                     </ul>
                 </div>
             </div>
