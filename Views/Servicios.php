@@ -163,6 +163,8 @@ unset($_SESSION['tipo_mensaje']);
                                         <span class="badge bg-danger">Polarizados</span>
                                     <?php elseif ($servicio['condicion'] == 'silla_ruedas'): ?>
                                         <span class="badge bg-primary">Silla de Ruedas</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">Normal</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
