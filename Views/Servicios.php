@@ -147,14 +147,22 @@ unset($_SESSION['tipo_mensaje']);
                                 </td>
                                 <td><?= date('H:i', strtotime($servicio['fecha_solicitud'])) ?></td>
                                 <td>
-                                    <?php if ($servicio['condicion'] == 'urgente'): ?>
-                                        <span class="badge bg-danger">Urgente</span>
-                                    <?php elseif ($servicio['condicion'] == 'preferencial'): ?>
-                                        <span class="badge bg-primary">Preferencial</span>
-                                    <?php elseif ($servicio['condicion'] == 'programado'): ?>
-                                        <span class="badge bg-info">Programado</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary">Normal</span>
+                                    <?php if ($servicio['condicion'] == 'aire'): ?>
+                                        <span class="badge bg-danger">Aire</span>
+                                    <?php elseif ($servicio['condicion'] == 'baul'): ?>
+                                        <span class="badge bg-primary">Baúl</span>
+                                    <?php elseif ($servicio['condicion'] == 'mascota'): ?>
+                                        <span class="badge bg-info">Mascota</span>
+                                        <?php if ($servicio['condicion'] == 'parrilla'): ?>
+                                        <span class="badge bg-danger">Parrilla</span>
+                                    <?php elseif ($servicio['condicion'] == 'transferencia'): ?>
+                                        <span class="badge bg-primary">Transferencia</span>
+                                    <?php elseif ($servicio['condicion'] == 'daviplata'): ?>
+                                        <span class="badge bg-info">Daviplata</span>
+                                        <?php if ($servicio['condicion'] == 'polarizados'): ?>
+                                        <span class="badge bg-danger">Polarizados</span>
+                                    <?php elseif ($servicio['condicion'] == 'silla_ruedas'): ?>
+                                        <span class="badge bg-primary">Silla de Ruedas</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
