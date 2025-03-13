@@ -105,10 +105,6 @@ unset($_SESSION['tipo_mensaje']);
                                                 <i class="bi bi-toggle-off"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <button type="button" class="btn btn-danger btn-sm"
-                                            onclick="confirmarEliminar(<?php echo $articulo['id']; ?>, '<?php echo htmlspecialchars($articulo['codigo']); ?>')">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
