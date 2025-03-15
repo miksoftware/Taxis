@@ -83,11 +83,17 @@ class ServicioController
     /**
      * Asigna un vehículo a un servicio
      */
-    public function asignar($servicio_id, $vehiculo_id)
+    public function asignar($servicio_id, $vehiculo_id, $tipo_vehiculo = 'unico')
     {
         // Validar datos
         if (!$servicio_id || !$vehiculo_id) {
             return ['error' => true, 'mensaje' => 'Datos incompletos'];
+        }
+
+        // Asegurar que tipo_vehiculo es uno de los valores permitidos
+        $tipo_vehiculo = strtolower($tipo_vehiculo);
+        if ($tipo_vehiculo !== 'unico' && $tipo_vehiculo !== 'proximo') {
+            $tipo_vehiculo = 'unico'; // Valor por defecto
         }
 
         // Verificar que el servicio existe y está pendiente
@@ -113,6 +119,7 @@ class ServicioController
         // Actualizar el estado del servicio a 'asignado'
         $datos_servicio = [
             'vehiculo_id' => $vehiculo_id,
+            'tipo_vehiculo' => $tipo_vehiculo,
             'estado' => 'asignado',
             'fecha_asignacion' => date('Y-m-d H:i:s')
         ];
@@ -141,7 +148,7 @@ class ServicioController
     /**
      * Cambia el vehículo asignado a un servicio
      */
-    public function cambiarVehiculo($servicio_id, $nuevo_vehiculo_id)
+    public function cambiarVehiculo($servicio_id, $nuevo_vehiculo_id, $tipo_vehiculo = 'unico')
     {
         // Validar datos
         if (!$servicio_id || !$nuevo_vehiculo_id) {
@@ -189,6 +196,7 @@ class ServicioController
         // 1. Actualizar el servicio con el nuevo vehículo
         $datos_servicio = [
             'vehiculo_id' => $nuevo_vehiculo_id,
+            'tipo_vehiculo' => $tipo_vehiculo,
             'fecha_asignacion' => date('Y-m-d H:i:s')
         ];
 

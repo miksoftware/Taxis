@@ -66,12 +66,6 @@ if ($hayFiltros) {
             <a href="Reportes.php" class="btn btn-sm btn-secondary shadow-sm">
                 <i class="bi bi-arrow-left"></i> Volver a Reportes
             </a>
-            <button id="btnExportarExcel" class="btn btn-sm btn-success shadow-sm">
-                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
-            </button>
-            <button id="btnExportarPDF" class="btn btn-sm btn-danger shadow-sm">
-                <i class="bi bi-file-earmark-pdf"></i> Exportar a PDF
-            </button>
         </div>
     </div>
 
@@ -292,8 +286,8 @@ if ($hayFiltros) {
         // Referencias a elementos importantes
         const formFiltros = document.getElementById('formFiltros');
         const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
-        const btnExportarExcel = document.getElementById('btnExportarExcel');
-        const btnExportarPDF = document.getElementById('btnExportarPDF');
+
+        console.log("DOM cargado - Configurando eventos");
 
         // Variables para gráficos
         let graficoUsuarios;
@@ -304,17 +298,21 @@ if ($hayFiltros) {
         <?php endif; ?>
 
         // Event Listeners
-        formFiltros.addEventListener('submit', function(e) {
-            e.preventDefault();
-            aplicarFiltros();
-        });
+        if (formFiltros) {
+            formFiltros.addEventListener('submit', function(e) {
+                e.preventDefault();
+                aplicarFiltros();
+            });
+        }
 
-        btnLimpiarFiltros.addEventListener('click', function() {
-            formFiltros.reset();
-            document.getElementById('fecha_inicio').value = '<?= date('Y-m-d', strtotime('-30 days')); ?>';
-            document.getElementById('fecha_fin').value = '<?= date('Y-m-d'); ?>';
-            aplicarFiltros();
-        });
+        if (btnLimpiarFiltros) {
+            btnLimpiarFiltros.addEventListener('click', function() {
+                formFiltros.reset();
+                document.getElementById('fecha_inicio').value = '<?= date('Y-m-d', strtotime('-30 days')); ?>';
+                document.getElementById('fecha_fin').value = '<?= date('Y-m-d'); ?>';
+                aplicarFiltros();
+            });
+        }
 
         if (document.getElementById('verGraficoBarras')) {
             document.getElementById('verGraficoBarras').addEventListener('click', function(e) {
@@ -336,13 +334,12 @@ if ($hayFiltros) {
             });
         }
 
-        btnExportarExcel.addEventListener('click', exportarExcel);
-        btnExportarPDF.addEventListener('click', exportarPDF);
-
         // Agregar eventos a los botones de detalle
         document.querySelectorAll('.verDetalle').forEach(btn => {
+            console.log("Configurando botón verDetalle:", btn);
             btn.addEventListener('click', function() {
                 const usuarioId = this.getAttribute('data-id');
+                console.log("Click en verDetalle para usuario ID:", usuarioId);
                 verDetalleUsuario(usuarioId);
             });
         });
@@ -407,7 +404,7 @@ if ($hayFiltros) {
             });
         }
 
-        // Función para ver detalle de usuario (reemplazar la existente)
+        // Función para ver detalle de usuario
         function verDetalleUsuario(usuarioId) {
             const modal = document.getElementById('modalDetalleUsuario');
             const contenido = document.getElementById('detalleUsuarioContenido');
@@ -418,16 +415,29 @@ if ($hayFiltros) {
             contenido.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
             graficoContainer.style.display = 'none';
 
-            const modalInstance = new bootstrap.Modal(modal);
-            modalInstance.show();
+            // Verificar si Bootstrap está disponible
+            if (typeof bootstrap !== 'undefined') {
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+            } else {
+                console.error("Bootstrap no está disponible");
+                // Fallback básico para mostrar el modal
+                modal.style.display = 'block';
+                modal.classList.add('show');
+            }
 
             const formData = new FormData(formFiltros);
             formData.append('usuario_id', usuarioId);
             formData.append('detalle', '1');
             const params = new URLSearchParams(formData).toString();
 
+            console.log("Realizando fetch a:", '../Processings/generar_reporte_usuarios.php?' + params);
+
             fetch('../Processings/generar_reporte_usuarios.php?' + params)
-                .then(response => response.json())
+                .then(response => {
+                    console.log("Respuesta recibida:", response);
+                    return response.json();
+                })
                 .then(data => {
                     console.log('Datos recibidos:', data);
                     if (data.error) {
@@ -576,20 +586,7 @@ if ($hayFiltros) {
                 });
         }
 
-        function exportarExcel() {
-            const formData = new FormData(formFiltros);
-            formData.append('formato', 'excel');
-            const params = new URLSearchParams(formData).toString();
-            window.open('../Processings/exportar_reporte_usuarios.php?' + params, '_blank');
-        }
-
-        function exportarPDF() {
-            const formData = new FormData(formFiltros);
-            formData.append('formato', 'pdf');
-            const params = new URLSearchParams(formData).toString();
-            window.open('../Processings/exportar_reporte_usuarios.php?' + params, '_blank');
-        }
-
+        // Función para formatear estado
         function formatearEstado(estado) {
             if (!estado) return 'N/A';
             const estados = {

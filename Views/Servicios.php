@@ -260,6 +260,24 @@ unset($_SESSION['tipo_mensaje']);
                         <?php endif; ?>
                     </select>
                 </div>
+
+                <!-- Añadir radio buttons para tipo de vehículo -->
+                <div class="mb-3">
+                    <label class="form-label">Tipo de asignación:</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoUnico" value="unico" checked>
+                        <label class="form-check-label" for="nuevoTipoUnico">
+                            <i class="bi bi-car-front"></i> Único
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoProximo" value="proximo">
+                        <label class="form-check-label" for="nuevoTipoProximo">
+                            <i class="bi bi-signpost-split"></i> Próximo
+                        </label>
+                    </div>
+                </div>
+
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle"></i> El vehículo actual quedará disponible y el nuevo vehículo será asignado a este servicio.
                 </div>
@@ -302,6 +320,23 @@ unset($_SESSION['tipo_mensaje']);
                         <?php endif; ?>
                     </select>
                 </div>
+                <!-- Añadir radio buttons para tipo de vehículo -->
+                <div class="mb-3">
+                    <label class="form-label">Tipo de asignación:</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoUnico" value="unico" checked>
+                        <label class="form-check-label" for="tipoUnico">
+                            <i class="bi bi-car-front"></i> Único
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoProximo" value="proximo">
+                        <label class="form-check-label" for="tipoProximo">
+                            <i class="bi bi-signpost-split"></i> Próximo
+                        </label>
+                    </div>
+                </div>
+
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> El vehículo seleccionado será asignado a este servicio y cambiará su estado a "ocupado".
                 </div>
@@ -467,7 +502,35 @@ unset($_SESSION['tipo_mensaje']);
                 button.addEventListener('click', function() {
                     const servicioId = this.getAttribute('data-id');
                     document.getElementById('servicioId').value = servicioId;
-                    new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
+
+                    // Cargar vehículos disponibles dinámicamente
+                    fetch('../Processings/obtener_vehiculos_disponibles.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            const vehiculoSelect = document.getElementById('vehiculoSelect');
+                            vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+
+                            if (data.vehiculos && data.vehiculos.length > 0) {
+                                data.vehiculos.forEach(vehiculo => {
+                                    const option = document.createElement('option');
+                                    option.value = vehiculo.id;
+                                    option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
+                                    vehiculoSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.disabled = true;
+                                option.textContent = 'No hay vehículos disponibles';
+                                vehiculoSelect.appendChild(option);
+                            }
+
+                            // Mostrar modal después de cargar los vehículos
+                            new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar vehículos:', error);
+                            alert('Error al cargar vehículos disponibles');
+                        });
                 });
             });
 
@@ -480,7 +543,34 @@ unset($_SESSION['tipo_mensaje']);
                     document.getElementById('cambiarServicioId').value = servicioId;
                     document.getElementById('vehiculoActual').textContent = vehiculoActual;
 
-                    new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
+                    // Cargar vehículos disponibles dinámicamente
+                    fetch('../Processings/obtener_vehiculos_disponibles.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            const vehiculoSelect = document.getElementById('nuevoVehiculoSelect');
+                            vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+
+                            if (data.vehiculos && data.vehiculos.length > 0) {
+                                data.vehiculos.forEach(vehiculo => {
+                                    const option = document.createElement('option');
+                                    option.value = vehiculo.id;
+                                    option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
+                                    vehiculoSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.disabled = true;
+                                option.textContent = 'No hay vehículos disponibles';
+                                vehiculoSelect.appendChild(option);
+                            }
+
+                            // Mostrar modal después de cargar los vehículos
+                            new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar vehículos:', error);
+                            alert('Error al cargar vehículos disponibles');
+                        });
                 });
             });
 
@@ -502,7 +592,7 @@ unset($_SESSION['tipo_mensaje']);
                                     alert('Error al finalizar servicio: ' + data.mensaje);
                                 } else {
                                     // Forzar actualización inmediata
-                                    actualizarTablaServicios();
+                                    location.reload();
                                 }
                             })
                             .catch(error => {
@@ -758,10 +848,12 @@ unset($_SESSION['tipo_mensaje']);
         document.getElementById('confirmarAsignacion').addEventListener('click', function() {
             const servicioId = document.getElementById('servicioId').value;
             const vehiculoId = document.getElementById('vehiculoSelect').value;
+            const tipoVehiculo = document.querySelector('input[name="tipoVehiculo"]:checked').value;
 
             const formData = new FormData();
             formData.append('servicio_id', servicioId);
             formData.append('vehiculo_id', vehiculoId);
+            formData.append('tipo_vehiculo', tipoVehiculo);
             formData.append('accion', 'asignar');
 
             fetch('../Processings/procesar_servicio.php', {
@@ -787,6 +879,8 @@ unset($_SESSION['tipo_mensaje']);
         document.getElementById('confirmarCambioVehiculo').addEventListener('click', function() {
             const servicioId = document.getElementById('cambiarServicioId').value;
             const nuevoVehiculoId = document.getElementById('nuevoVehiculoSelect').value;
+            // Obtener el valor del radio button seleccionado
+            const tipoVehiculo = document.querySelector('input[name="nuevoTipoVehiculo"]:checked').value;
 
             if (!servicioId || !nuevoVehiculoId) {
                 alert('Debe seleccionar un vehículo para continuar');
@@ -802,6 +896,7 @@ unset($_SESSION['tipo_mensaje']);
             const formData = new FormData();
             formData.append('servicio_id', servicioId);
             formData.append('vehiculo_id', nuevoVehiculoId);
+            formData.append('tipo_vehiculo', tipoVehiculo);
             formData.append('accion', 'cambiar_vehiculo');
 
             fetch('../Processings/procesar_servicio.php', {

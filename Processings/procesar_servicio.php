@@ -58,7 +58,7 @@ switch ($accion) {
             'direccion_id' => intval($_POST['direccion_id']),
             'condicion' => $_POST['condicion'],
             'observaciones' => isset($_POST['observaciones']) ? $_POST['observaciones'] : '',
-            'estado' => 'pendiente',            
+            'estado' => 'pendiente',
             'fecha_solicitud' => date('Y-m-d H:i:s'),
             'operador_id' => $_SESSION['usuario_id']
         ];
@@ -89,8 +89,9 @@ switch ($accion) {
         try {
             $servicio_id = intval($_POST['servicio_id']);
             $vehiculo_id = intval($_POST['vehiculo_id']);
+            $tipo_vehiculo = $_POST['tipo_vehiculo'] ?? 'unico';  // Valor por defecto 'unico'
 
-            $resultado = $servicioController->cambiarVehiculo($servicio_id, $vehiculo_id);
+            $resultado = $servicioController->cambiarVehiculo($servicio_id, $vehiculo_id, $tipo_vehiculo);
             echo json_encode($resultado);
         } catch (Exception $e) {
             echo json_encode([
@@ -100,19 +101,21 @@ switch ($accion) {
         }
         break;
 
-    case 'asignar':
-        // Verificar datos necesarios
-        if (empty($_POST['servicio_id']) || empty($_POST['vehiculo_id'])) {
-            echo json_encode(['error' => true, 'mensaje' => 'Faltan datos obligatorios']);
-            exit;
-        }
-
-        $resultado = $servicioController->asignar(
-            intval($_POST['servicio_id']),
-            intval($_POST['vehiculo_id'])
-        );
-        echo json_encode($resultado);
-        break;
+        case 'asignar':
+            // Verificar datos necesarios
+            if (empty($_POST['servicio_id']) || empty($_POST['vehiculo_id'])) {
+                echo json_encode(['error' => true, 'mensaje' => 'Faltan datos obligatorios']);
+                exit;
+            }
+        
+            // Quita el intval() para el tipo_vehiculo ya que debe ser string
+            $resultado = $servicioController->asignar(
+                intval($_POST['servicio_id']),
+                intval($_POST['vehiculo_id']),
+                $_POST['tipo_vehiculo'] // Quita el intval aquí
+            );
+            echo json_encode($resultado);
+            break;
 
     case 'finalizar':
         // Verificar datos necesarios
