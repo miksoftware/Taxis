@@ -713,7 +713,7 @@ unset($_SESSION['tipo_mensaje']);
                         // Limpiar formulario de todas formas
                         limpiarFormularioServicio();
                         // Actualizar tabla
-                        actualizarTablaServicios();
+                        location.reload();
                         return;
                     }
 
@@ -727,7 +727,7 @@ unset($_SESSION['tipo_mensaje']);
                     // Limpiar formulario
                     limpiarFormularioServicio();
                     // Actualizar tabla
-                    actualizarTablaServicios();
+                    location.reload();
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -774,7 +774,7 @@ unset($_SESSION['tipo_mensaje']);
                         alert('Error al asignar vehículo: ' + data.mensaje);
                     } else {
                         bootstrap.Modal.getInstance(document.getElementById('asignarVehiculoModal')).hide();
-                        actualizarTablaServicios();
+                        location.reload();
                     }
                 })
                 .catch(error => {

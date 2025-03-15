@@ -323,10 +323,12 @@ class ServicioController
             'fecha_fin' => date('Y-m-d H:i:s')
         ];
 
-        // Liberar el vehículo
-        $resultado_vehiculo = $this->vehiculoModel->cambiarEstado($servicio['vehiculo_id'], 'disponible');
-        if (isset($resultado_vehiculo['error']) && $resultado_vehiculo['error']) {
-            return $resultado_vehiculo;
+        // Liberar el vehículo solo si hay uno asignado
+        if (!empty($servicio['vehiculo_id'])) {
+            $resultado_vehiculo = $this->vehiculoModel->cambiarEstado($servicio['vehiculo_id'], 'disponible');
+            if (isset($resultado_vehiculo['error']) && $resultado_vehiculo['error']) {
+                return $resultado_vehiculo;
+            }
         }
 
         return $this->servicioModel->actualizar($servicio_id, $datos_servicio);
