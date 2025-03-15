@@ -36,7 +36,7 @@ $accion = $_POST['accion'];
 switch ($accion) {
     case 'crear':
         // Verificar datos necesarios
-        if (empty($_POST['cliente_id']) || empty($_POST['direccion_id']) || empty($_POST['condicion'])) {
+        if (empty($_POST['cliente_id']) || empty($_POST['direccion_id'])) {
             echo json_encode(['error' => true, 'mensaje' => 'Faltan datos obligatorios']);
             exit;
         }
@@ -53,15 +53,15 @@ switch ($accion) {
             echo json_encode(['error' => true, 'mensaje' => 'Error de conexión: ' . $e->getMessage()]);
             exit;
         }
-
         $datos = [
             'cliente_id' => intval($_POST['cliente_id']),
             'direccion_id' => intval($_POST['direccion_id']),
             'condicion' => $_POST['condicion'],
             'observaciones' => isset($_POST['observaciones']) ? $_POST['observaciones'] : '',
+            'estado' => 'pendiente',            
+            'fecha_solicitud' => date('Y-m-d H:i:s'),
             'operador_id' => $_SESSION['usuario_id']
         ];
-
         // Comprobar que operador_id es un entero válido
         if (!is_int($datos['operador_id'])) {
             error_log("operador_id no es un entero: " . gettype($datos['operador_id']) . " valor: " . $datos['operador_id']);
@@ -86,11 +86,18 @@ switch ($accion) {
             exit;
         }
 
-        $servicio_id = intval($_POST['servicio_id']);
-        $vehiculo_id = intval($_POST['vehiculo_id']);
+        try {
+            $servicio_id = intval($_POST['servicio_id']);
+            $vehiculo_id = intval($_POST['vehiculo_id']);
 
-        $resultado = $servicioController->cambiarVehiculo($servicio_id, $vehiculo_id);
-        echo json_encode($resultado);
+            $resultado = $servicioController->cambiarVehiculo($servicio_id, $vehiculo_id);
+            echo json_encode($resultado);
+        } catch (Exception $e) {
+            echo json_encode([
+                'error' => true,
+                'mensaje' => 'Error al procesar la solicitud: ' . $e->getMessage()
+            ]);
+        }
         break;
 
     case 'asignar':

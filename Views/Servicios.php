@@ -321,6 +321,227 @@ unset($_SESSION['tipo_mensaje']);
         let clienteActual = null;
         let direccionSeleccionada = null;
 
+        // Variables para controlar el estado de los modales
+        let modalEstados = {
+            asignarModal: false,
+            cambiarModal: false
+        };
+
+        // Variable para guardar el ID del intervalo
+        let intervaloActualizacion;
+
+        // Función para actualizar la tabla de servicios
+        const actualizarTablaServicios = () => {
+            // No actualizar si hay algún modal abierto para evitar interrumpir al usuario
+            if (modalEstados.asignarModal || modalEstados.cambiarModal) {
+                return;
+            }
+
+            // Guardar la posición de scroll actual
+            const scrollPos = window.scrollY;
+
+            // Solicitar datos actualizados mediante fetch
+            fetch('../Processings/obtener_servicios_activos.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error al obtener datos:', data.mensaje);
+                        return;
+                    }
+
+                    // Actualizar contador de servicios
+                    document.getElementById('contadorServicios').textContent = data.servicios.length;
+
+                    // Obtener la tabla actual
+                    const tbody = document.querySelector('#tablaServicios tbody');
+
+                    // Si no hay servicios, mostrar mensaje
+                    if (data.servicios.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center">No hay servicios activos</td></tr>`;
+                        return;
+                    }
+
+                    // Generar HTML para los nuevos datos
+                    let htmlServicios = '';
+
+                    data.servicios.forEach(servicio => {
+                        // Calcular el tiempo transcurrido
+                        const tiempoInicio = servicio.estado === 'pendiente' ? servicio.fecha_solicitud : servicio.fecha_asignacion;
+                        const ahora = new Date();
+                        const fechaInicio = new Date(tiempoInicio);
+                        const diffMinutos = Math.floor((ahora - fechaInicio) / 1000 / 60);
+
+                        let tiempoFormateado;
+                        if (diffMinutos < 60) {
+                            tiempoFormateado = diffMinutos + ' min';
+                        } else {
+                            const horas = Math.floor(diffMinutos / 60);
+                            const minutos = diffMinutos % 60;
+                            tiempoFormateado = horas + 'h ' + minutos + 'm';
+                        }
+
+                        // Generar badge para condición
+                        let condicionBadge = '';
+                        if (servicio.condicion) {
+                            const badgeColor = {
+                                'aire': 'danger',
+                                'baul': 'primary',
+                                'mascota': 'info',
+                                'parrilla': 'danger',
+                                'transferencia': 'primary',
+                                'daviplata': 'info',
+                                'polarizados': 'danger',
+                                'silla_ruedas': 'primary'
+                            } [servicio.condicion] || 'secondary';
+
+                            const condicionText = servicio.condicion.charAt(0).toUpperCase() + servicio.condicion.slice(1).replace('_', ' ');
+                            condicionBadge = `<span class="badge bg-${badgeColor}">${condicionText}</span>`;
+                        }
+
+                        // Generar badge para estado
+                        const estadoBadge = {
+                            'pendiente': '<span class="badge bg-warning">Pendiente</span>',
+                            'asignado': '<span class="badge bg-info">Asignado</span>',
+                            'en_camino': '<span class="badge bg-primary">En camino</span>'
+                        } [servicio.estado] || '';
+
+                        // Generar botones de acción según el estado
+                        let botonesAccion = '';
+
+                        if (servicio.estado === 'pendiente') {
+                            botonesAccion += `<button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo" data-id="${servicio.id}">
+                            <i class="bi bi-car-front"></i>
+                        </button>`;
+                        } else if (servicio.estado === 'asignado') {
+                            botonesAccion += `<button type="button" class="btn btn-info btn-sm cambiarMovil" title="Cambiar movil asignado" data-id="${servicio.id}">
+                            <i class="bi bi-signpost-2"></i>
+                        </button>`;
+                        }
+
+                        botonesAccion += `<button type="button" class="btn btn-success btn-sm finalizarServicio" title="Finalizar servicio" data-id="${servicio.id}">
+                        <i class="bi bi-check-circle"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm cancelarServicio" title="Cancelar servicio" data-id="${servicio.id}">
+                        <i class="bi bi-x-circle"></i>
+                    </button>`;
+
+                        // Información del vehículo
+                        const infoVehiculo = servicio.placa ?
+                            `${servicio.placa} - ${servicio.numero_movil}` : '-';
+
+                        // Construir la fila
+                        htmlServicios += `<tr>
+                        <td>${servicio.telefono}</td>
+                        <td>${servicio.direccion}</td>
+                        <td>${servicio.observaciones || 'sin observaciones'}</td>
+                        <td>${condicionBadge}</td>
+                        <td>${infoVehiculo}</td>
+                        <td>${estadoBadge}</td>
+                        <td><span class="tiempoTranscurrido" data-inicio="${tiempoInicio}">${tiempoFormateado}</span></td>
+                        <td>${botonesAccion}</td>
+                    </tr>`;
+                    });
+
+                    // Actualizar el contenido de la tabla
+                    tbody.innerHTML = htmlServicios;
+
+                    // Restaurar la posición de scroll
+                    window.scrollTo(0, scrollPos);
+
+                    // Volver a añadir event listeners a los nuevos botones
+                    agregarEventListeners();
+                })
+                .catch(error => {
+                    console.error('Error al actualizar tabla:', error);
+                });
+        };
+
+        // Función para agregar event listeners a los botones de acción
+        function agregarEventListeners() {
+            document.querySelectorAll('.asignarServicio').forEach(button => {
+                button.addEventListener('click', function() {
+                    const servicioId = this.getAttribute('data-id');
+                    document.getElementById('servicioId').value = servicioId;
+                    new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
+                });
+            });
+
+            document.querySelectorAll('.cambiarMovil').forEach(button => {
+                button.addEventListener('click', function() {
+                    const servicioId = this.getAttribute('data-id');
+                    const fila = this.closest('tr');
+                    const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
+
+                    document.getElementById('cambiarServicioId').value = servicioId;
+                    document.getElementById('vehiculoActual').textContent = vehiculoActual;
+
+                    new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
+                });
+            });
+
+            document.querySelectorAll('.finalizarServicio').forEach(button => {
+                button.addEventListener('click', function() {
+                    if (confirm('¿Está seguro de finalizar este servicio?')) {
+                        const servicioId = this.getAttribute('data-id');
+                        const formData = new FormData();
+                        formData.append('servicio_id', servicioId);
+                        formData.append('accion', 'finalizar');
+
+                        fetch('../Processings/procesar_servicio.php', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
+                                    alert('Error al finalizar servicio: ' + data.mensaje);
+                                } else {
+                                    // Forzar actualización inmediata
+                                    actualizarTablaServicios();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Error al finalizar servicio');
+                            });
+                    }
+                });
+            });
+
+            document.querySelectorAll('.cancelarServicio').forEach(button => {
+                button.addEventListener('click', function() {
+                    if (confirm('¿Está seguro de cancelar este servicio?')) {
+                        const servicioId = this.getAttribute('data-id');
+                        const formData = new FormData();
+                        formData.append('servicio_id', servicioId);
+                        formData.append('accion', 'cancelar');
+
+                        fetch('../Processings/procesar_servicio.php', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
+                                    alert('Error al cancelar servicio: ' + data.mensaje);
+                                } else {
+                                    // Forzar actualización inmediata
+                                    actualizarTablaServicios();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Error al cancelar servicio');
+                            });
+                    }
+                });
+            });
+        }
 
         // Búsqueda de cliente por teléfono
         document.getElementById('formBusquedaCliente').addEventListener('submit', function(e) {
@@ -449,6 +670,12 @@ unset($_SESSION['tipo_mensaje']);
             const condicion = document.getElementById('condicionServicio').value;
             const observaciones = document.getElementById('observaciones').value;
 
+            // Mostrar indicador de carga
+            const btnCrear = this;
+            const textoOriginal = btnCrear.innerHTML;
+            btnCrear.disabled = true;
+            btnCrear.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+
             const formData = new FormData();
             formData.append('cliente_id', clienteActual.id);
             formData.append('direccion_id', direccionSeleccionada);
@@ -460,38 +687,72 @@ unset($_SESSION['tipo_mensaje']);
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error de red: ' + response.status);
+                    }
+                    return response.text().then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('Respuesta no válida del servidor:', text);
+                            throw new Error('Formato de respuesta inválido');
+                        }
+                    });
+                })
                 .then(data => {
+                    console.log('Respuesta al crear servicio:', data);
+
+                    // Restaurar botón
+                    btnCrear.disabled = false;
+                    btnCrear.innerHTML = textoOriginal;
+
+                    // Si hay error pero contiene un ID de servicio, probablemente el servicio se creó
+                    if (data.error && data.id) {
+                        alert('El servicio se ha creado con ID: ' + data.id + ' pero hubo un problema: ' + data.mensaje);
+                        // Limpiar formulario de todas formas
+                        limpiarFormularioServicio();
+                        // Actualizar tabla
+                        actualizarTablaServicios();
+                        return;
+                    }
+
+                    // Si hay error normal
                     if (data.error) {
                         alert('Error al crear servicio: ' + data.mensaje);
-                    } else {
-                        // Limpiar formulario
-                        document.getElementById('telefono').value = '';
-                        document.getElementById('observaciones').value = '';
-                        document.getElementById('clienteInfo').style.display = 'none';
-                        document.getElementById('direccionesContainer').style.display = 'none';
-                        document.getElementById('detallesServicioForm').style.display = 'none';
-
-                        // Recargar la tabla de servicios pendientes
-                        location.reload();
+                        return;
                     }
+
+                    // Caso de éxito
+                    // Limpiar formulario
+                    limpiarFormularioServicio();
+                    // Actualizar tabla
+                    actualizarTablaServicios();
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error al crear servicio');
+
+                    // Restaurar botón
+                    btnCrear.disabled = false;
+                    btnCrear.innerHTML = textoOriginal;
+
+                    alert('Error al procesar la solicitud: ' + error.message);
                 });
         });
 
-        // Asignar servicio (abrir modal)
-        document.querySelectorAll('.asignarServicio').forEach(button => {
-            button.addEventListener('click', function() {
-                const servicioId = this.getAttribute('data-id');
-                document.getElementById('servicioId').value = servicioId;
+        // Función auxiliar para limpiar el formulario de servicio
+        function limpiarFormularioServicio() {
+            document.getElementById('telefono').value = '';
+            document.getElementById('condicionServicio').value = 'ninguno';
+            document.getElementById('observaciones').value = '';
+            document.getElementById('clienteInfo').style.display = 'none';
+            document.getElementById('direccionesContainer').style.display = 'none';
+            document.getElementById('detallesServicioForm').style.display = 'none';
 
-                // Mostrar modal
-                new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
-            });
-        });
+            // Reiniciar variables
+            clienteActual = null;
+            direccionSeleccionada = null;
+        }
 
         // Confirmar asignación de vehículo
         document.getElementById('confirmarAsignacion').addEventListener('click', function() {
@@ -512,30 +773,14 @@ unset($_SESSION['tipo_mensaje']);
                     if (data.error) {
                         alert('Error al asignar vehículo: ' + data.mensaje);
                     } else {
-                        location.reload();
+                        bootstrap.Modal.getInstance(document.getElementById('asignarVehiculoModal')).hide();
+                        actualizarTablaServicios();
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Error al asignar vehículo');
                 });
-        });
-
-        // Abrir modal para cambiar vehículo
-        document.querySelectorAll('.cambiarMovil').forEach(button => {
-            button.addEventListener('click', function() {
-                const servicioId = this.getAttribute('data-id');
-                const fila = this.closest('tr');
-                const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
-
-                // Guardar ID del servicio en el modal
-                document.getElementById('cambiarServicioId').value = servicioId;
-                // Mostrar el vehículo actual
-                document.getElementById('vehiculoActual').textContent = vehiculoActual;
-
-                // Mostrar modal
-                new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
-            });
         });
 
         // Confirmar cambio de vehículo
@@ -602,126 +847,6 @@ unset($_SESSION['tipo_mensaje']);
                 });
         });
 
-        // Finalizar servicio
-        document.querySelectorAll('.finalizarServicio').forEach(button => {
-            button.addEventListener('click', function() {
-                if (confirm('¿Está seguro de finalizar este servicio?')) {
-                    const servicioId = this.getAttribute('data-id');
-
-                    const formData = new FormData();
-                    formData.append('servicio_id', servicioId);
-                    formData.append('accion', 'finalizar');
-
-                    fetch('../Processings/procesar_servicio.php', {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.error) {
-                                alert('Error al finalizar servicio: ' + data.mensaje);
-                            } else {
-                                location.reload();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Error al finalizar servicio');
-                        });
-                }
-            });
-        });
-
-        // Cancelar servicio
-        document.querySelectorAll('.cancelarServicio').forEach(button => {
-            button.addEventListener('click', function() {
-                if (confirm('¿Está seguro de cancelar este servicio?')) {
-                    const servicioId = this.getAttribute('data-id');
-
-                    const formData = new FormData();
-                    formData.append('servicio_id', servicioId);
-                    formData.append('accion', 'cancelar');
-
-                    fetch('../Processings/procesar_servicio.php', {
-                            method: 'POST',
-                            body: formData
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.error) {
-                                alert('Error al cancelar servicio: ' + data.mensaje);
-                            } else {
-                                location.reload();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Error al cancelar servicio');
-                        });
-                }
-            });
-        });
-
-        // Actualizar tiempos cada 30 segundos
-        setInterval(actualizarTiempos, 30000);
-
-        // Funciones auxiliares
-        function mostrarInfoCliente(cliente) {
-            const clienteInfo = document.getElementById('clienteInfo');
-            clienteInfo.innerHTML = `
-            <div class="alert alert-info">
-                <h6 class="mb-1"><i class="bi bi-person"></i> <strong>${cliente.nombre || 'Cliente'}</strong></h6>
-                <p class="mb-0"><i class="bi bi-telephone"></i> ${cliente.telefono}</p>
-            </div>
-        `;
-            clienteInfo.style.display = 'block';
-        }
-
-        function mostrarFormularioNuevoCliente(telefono) {
-            const clienteInfo = document.getElementById('clienteInfo');
-            clienteInfo.innerHTML = `
-            <div class="alert alert-warning">
-                <h6 class="mb-2">Cliente nuevo</h6>
-                <div class="mb-2">
-                    <label for="nombreCliente" class="form-label">Nombre:</label>
-                    <input type="text" id="nombreCliente" class="form-control" placeholder="Nombre del cliente">
-                </div>
-                <button id="guardarCliente" class="btn btn-primary">Guardar Cliente</button>
-            </div>
-        `;
-            clienteInfo.style.display = 'block';
-
-            document.getElementById('guardarCliente').addEventListener('click', function() {
-                const nombre = document.getElementById('nombreCliente').value.trim();
-
-                const formData = new FormData();
-                formData.append('telefono', telefono);
-                formData.append('nombre', nombre);
-
-                fetch('../Processings/guardar_cliente.php', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            alert('Error al guardar cliente: ' + data.mensaje);
-                        } else {
-                            clienteActual = data;
-                            mostrarInfoCliente(data);
-                            document.getElementById('direccionesContainer').style.display = 'block';
-                            document.getElementById('nuevaDireccionForm').style.display = 'block';
-                            document.getElementById('mostrarNuevaDireccion').style.display = 'none';
-                            document.getElementById('nuevaDireccion').focus();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error al guardar cliente');
-                    });
-            });
-        }
-
         // Guardar nueva dirección
         document.getElementById('guardarDireccion').addEventListener('click', function() {
             const direccion = document.getElementById('nuevaDireccion').value.trim();
@@ -783,6 +908,62 @@ unset($_SESSION['tipo_mensaje']);
             }
         });
 
+        function mostrarInfoCliente(cliente) {
+            const clienteInfo = document.getElementById('clienteInfo');
+            clienteInfo.innerHTML = `
+        <div class="alert alert-info">
+            <h6 class="mb-1"><i class="bi bi-person"></i> <strong>${cliente.nombre || 'Cliente'}</strong></h6>
+            <p class="mb-0"><i class="bi bi-telephone"></i> ${cliente.telefono}</p>
+        </div>
+    `;
+            clienteInfo.style.display = 'block';
+        }
+
+        function mostrarFormularioNuevoCliente(telefono) {
+            const clienteInfo = document.getElementById('clienteInfo');
+            clienteInfo.innerHTML = `
+        <div class="alert alert-warning">
+            <h6 class="mb-2">Cliente nuevo</h6>
+            <div class="mb-2">
+                <label for="nombreCliente" class="form-label">Nombre:</label>
+                <input type="text" id="nombreCliente" class="form-control" placeholder="Nombre del cliente">
+            </div>
+            <button id="guardarCliente" class="btn btn-primary">Guardar Cliente</button>
+        </div>
+    `;
+            clienteInfo.style.display = 'block';
+
+            document.getElementById('guardarCliente').addEventListener('click', function() {
+                const nombre = document.getElementById('nombreCliente').value.trim();
+
+                const formData = new FormData();
+                formData.append('telefono', telefono);
+                formData.append('nombre', nombre);
+
+                fetch('../Processings/guardar_cliente.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            alert('Error al guardar cliente: ' + data.mensaje);
+                        } else {
+                            clienteActual = data;
+                            mostrarInfoCliente(data);
+                            document.getElementById('direccionesContainer').style.display = 'block';
+                            document.getElementById('nuevaDireccionForm').style.display = 'block';
+                            document.getElementById('mostrarNuevaDireccion').style.display = 'none';
+                            document.getElementById('nuevaDireccion').focus();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al guardar cliente');
+                    });
+            });
+        }
+
         function actualizarTiempos() {
             document.querySelectorAll('.tiempoTranscurrido').forEach(elem => {
                 const inicio = elem.getAttribute('data-inicio');
@@ -800,6 +981,39 @@ unset($_SESSION['tipo_mensaje']);
                 }
             });
         }
+
+        // Actualizar tiempos cada 30 segundos
+        setInterval(actualizarTiempos, 30000);
+
+        // Función para iniciar la actualización automática
+        function iniciarActualizacionAutomatica() {
+            // Detectar cuando se abren/cierran modales
+            document.getElementById('asignarVehiculoModal').addEventListener('shown.bs.modal', () => modalEstados.asignarModal = true);
+            document.getElementById('asignarVehiculoModal').addEventListener('hidden.bs.modal', () => modalEstados.asignarModal = false);
+            document.getElementById('cambiarVehiculoModal').addEventListener('shown.bs.modal', () => modalEstados.cambiarModal = true);
+            document.getElementById('cambiarVehiculoModal').addEventListener('hidden.bs.modal', () => modalEstados.cambiarModal = false);
+
+            // Iniciar actualización periódica (cada 2 segundos)
+            intervaloActualizacion = setInterval(actualizarTablaServicios, 2000);
+
+            // Detener actualizaciones cuando el usuario abandona la página
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    clearInterval(intervaloActualizacion);
+                } else {
+                    // Reiniciar actualizaciones cuando regresa
+                    if (!intervaloActualizacion) {
+                        intervaloActualizacion = setInterval(actualizarTablaServicios, 2000);
+                    }
+                }
+            });
+        }
+
+        // Añadir listeners iniciales para los botones existentes
+        agregarEventListeners();
+
+        // Iniciar actualización automática cuando el DOM está listo
+        iniciarActualizacionAutomatica();
     });
 </script>
 

@@ -28,33 +28,56 @@ class ServicioController
     public function crear($datos)
     {
         // Validar datos necesarios
-        if (!isset($datos['cliente_id']) || !isset($datos['direccion_id']) || !isset($datos['condicion'])) {
-            return ['error' => true, 'mensaje' => 'Datos incompletos'];
+        if (!isset($datos['cliente_id']) || !isset($datos['direccion_id'])) {
+            return [
+                'error' => true,
+                'mensaje' => 'Cliente y dirección son obligatorios'
+            ];
         }
 
-        // Verificar que el cliente y la dirección existen
+        // Verificar que el cliente y la dirección existan
         $cliente = $this->clienteModel->obtenerPorId($datos['cliente_id']);
         if (!$cliente) {
-            return ['error' => true, 'mensaje' => 'Cliente no encontrado'];
+            return [
+                'error' => true,
+                'mensaje' => 'Cliente no encontrado'
+            ];
         }
 
         $direccion = $this->direccionModel->obtenerPorId($datos['direccion_id']);
         if (!$direccion) {
-            return ['error' => true, 'mensaje' => 'Dirección no encontrada'];
+            return [
+                'error' => true,
+                'mensaje' => 'Dirección no encontrada'
+            ];
         }
 
         // Crear el servicio
-        $servicio = [
-            'cliente_id' => $datos['cliente_id'],
-            'direccion_id' => $datos['direccion_id'],
-            'condicion' => $datos['condicion'],
-            'observaciones' => isset($datos['observaciones']) ? $datos['observaciones'] : '',
-            'estado' => 'pendiente',
-            'fecha_solicitud' => date('Y-m-d H:i:s'),
-            'operador_id' => isset($datos['operador_id']) ? $datos['operador_id'] : $_SESSION['usuario_id']
-        ];
+        try {
+            $resultado = $this->servicioModel->crear($datos);
 
-        return $this->servicioModel->crear($servicio);
+            // Asegurar que tenemos un formato de respuesta consistente
+            if (isset($resultado['error']) && $resultado['error']) {
+                return $resultado;
+            }
+
+            // Si la creación fue exitosa pero no tenemos formato estándar
+            if (!isset($resultado['error'])) {
+                return [
+                    'error' => false,
+                    'mensaje' => 'Servicio creado correctamente',
+                    'id' => isset($resultado['id']) ? $resultado['id'] : (is_numeric($resultado) ? $resultado : null)
+                ];
+            }
+
+            return $resultado;
+        } catch (Exception $e) {
+            error_log("Error al crear servicio: " . $e->getMessage());
+            return [
+                'error' => true,
+                'mensaje' => 'Error al crear servicio: ' . $e->getMessage()
+            ];
+        }
     }
 
     /**
@@ -146,7 +169,7 @@ class ServicioController
 
         // Verificar que el nuevo vehículo existe y está disponible
         $nuevoVehiculo = $this->vehiculoModel->obtenerPorId($nuevo_vehiculo_id);
-        if (isset($nuevoVehiculo['error'])) { // Verificar si hay error en la respuesta del modelo
+        if (!$nuevoVehiculo || (isset($nuevoVehiculo['error']) && $nuevoVehiculo['error'])) {
             return [
                 'error' => true,
                 'mensaje' => 'Vehículo no encontrado'
@@ -160,66 +183,52 @@ class ServicioController
             ];
         }
 
-        try {
-            // Comenzar transacción
-            $this->pdo->beginTransaction();
+        // Obtener el vehículo actual
+        $vehiculo_actual_id = $servicio['vehiculo_id'];
 
-            // Obtener el vehículo actual
-            $vehiculo_actual_id = $servicio['vehiculo_id'];
+        // 1. Actualizar el servicio con el nuevo vehículo
+        $datos_servicio = [
+            'vehiculo_id' => $nuevo_vehiculo_id,
+            'fecha_asignacion' => date('Y-m-d H:i:s')
+        ];
 
-            // Actualizar el servicio con el nuevo vehículo
-            $datos_servicio = [
-                'vehiculo_id' => $nuevo_vehiculo_id,
-                'fecha_actualizacion' => date('Y-m-d H:i:s')
-            ];
-
-            $resultado_servicio = $this->servicioModel->actualizar($servicio_id, $datos_servicio);
-            if (isset($resultado_servicio['error']) && $resultado_servicio['error']) {
-                throw new Exception("Error al actualizar servicio: " . $resultado_servicio['mensaje']);
-            }
-
-            // Liberar el vehículo anterior
-            if ($vehiculo_actual_id) {
-                $vehiculo_actual = $this->vehiculoModel->obtenerPorId($vehiculo_actual_id);
-                if (!isset($vehiculo_actual['error'])) {
-                    $resultado_liberar = $this->vehiculoModel->cambiarEstado($vehiculo_actual_id, 'disponible');
-                    if (isset($resultado_liberar['error']) && $resultado_liberar['error']) {
-                        throw new Exception("Error al liberar vehículo actual: " . $resultado_liberar['mensaje']);
-                    }
-                }
-            }
-
-            // Actualizar estado del nuevo vehículo a ocupado
-            $resultado_ocupar = $this->vehiculoModel->cambiarEstado($nuevo_vehiculo_id, 'ocupado');
-            if (isset($resultado_ocupar['error']) && $resultado_ocupar['error']) {
-                throw new Exception("Error al ocupar nuevo vehículo: " . $resultado_ocupar['mensaje']);
-            }
-
-            // Registrar el cambio en el historial
-            $usuario_id = isset($_SESSION['usuario_id']) ? $_SESSION['usuario_id'] : 0;
-            $this->servicioModel->registrarHistorialEstado(
-                $servicio_id,
-                'cambio_vehiculo: ' . $vehiculo_actual_id,
-                'cambio_vehiculo: ' . $nuevo_vehiculo_id,
-                $usuario_id
-            );
-
-            // Confirmar transacción
-            $this->pdo->commit();
-
-            return [
-                'error' => false,
-                'mensaje' => 'Vehículo cambiado correctamente'
-            ];
-        } catch (Exception $e) {
-            // Revertir cambios si hay error
-            $this->pdo->rollBack();
-            error_log("Error en cambio de vehículo: " . $e->getMessage());
+        $resultado_servicio = $this->servicioModel->actualizar($servicio_id, $datos_servicio);
+        if (isset($resultado_servicio['error']) && $resultado_servicio['error']) {
             return [
                 'error' => true,
-                'mensaje' => 'Error al cambiar vehículo: ' . $e->getMessage()
+                'mensaje' => 'Error al actualizar servicio: ' . $resultado_servicio['mensaje']
             ];
         }
+
+        // 2. Actualizar estado del nuevo vehículo a ocupado
+        $resultado_ocupar = $this->vehiculoModel->cambiarEstado($nuevo_vehiculo_id, 'ocupado');
+        if (isset($resultado_ocupar['error']) && $resultado_ocupar['error']) {
+            // Si falla, intentamos revertir el cambio en el servicio
+            $this->servicioModel->actualizar($servicio_id, [
+                'vehiculo_id' => $vehiculo_actual_id,
+                'fecha_actualizacion' => date('Y-m-d H:i:s')
+            ]);
+
+            return [
+                'error' => true,
+                'mensaje' => 'Error al ocupar nuevo vehículo: ' . $resultado_ocupar['mensaje']
+            ];
+        }
+
+        // 3. Liberar el vehículo anterior (si existe)
+        if ($vehiculo_actual_id) {
+            $resultado_liberar = $this->vehiculoModel->cambiarEstado($vehiculo_actual_id, 'disponible');
+            if (isset($resultado_liberar['error']) && $resultado_liberar['error']) {
+                // No revertimos los cambios anteriores porque el servicio ya tiene un nuevo vehículo asignado que funciona
+                error_log("Error al liberar vehículo anterior: " . $resultado_liberar['mensaje']);
+                // Continuamos con el proceso, no es crítico
+            }
+        }
+
+        return [
+            'error' => false,
+            'mensaje' => 'Vehículo cambiado correctamente'
+        ];
     }
 
 
