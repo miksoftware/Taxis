@@ -30,10 +30,8 @@ $servicioController = new ServicioController($pdo);
 $filtros = ['estado' => 'disponible'];
 $vehiculos = $vehiculoController->listar($filtros);
 
-// Obtener servicios pendientes y en proceso
-$servicios_pendientes = $servicioController->listarPorEstado('pendiente');
-$servicios_asignados = $servicioController->listarPorEstado('asignado');
-$servicios_en_camino = $servicioController->listarPorEstado('en_camino');
+// Obtener todos los servicios activos (no finalizados ni cancelados)
+$servicios_activos = $servicioController->listarServiciosActivos();
 
 // Mensaje de operaciones
 $mensaje = isset($_SESSION['mensaje']) ? $_SESSION['mensaje'] : null;
@@ -115,37 +113,38 @@ unset($_SESSION['tipo_mensaje']);
     </div>
 </div>
 
-<!-- Panel de servicios pendientes -->
+<!-- Panel de servicios activos -->
 <div class="card shadow mb-4">
     <div class="card-header py-3 d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
-            <i class="bi bi-hourglass-split me-2"></i> Servicios Pendientes
+            <i class="bi bi-list-check me-2"></i> Lista de Servicios
         </h5>
-        <span class="badge bg-warning" id="contadorPendientes"><?= count($servicios_pendientes) ?></span>
+        <span class="badge bg-primary" id="contadorServicios"><?= count($servicios_activos) ?></span>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover" id="tablaPendientes">
+            <table class="table table-hover" id="tablaServicios">
                 <thead>
                     <tr>
                         <th>Cliente</th>
                         <th>Dirección</th>
                         <th>Observaciones</th>
-                        <th>Solicitud</th>
                         <th>Condición</th>
-                        <th>Acción</th>
+                        <th>Vehículo</th>
+                        <th>Estado</th>
+                        <th>Tiempo</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!empty($servicios_pendientes)): ?>
-                        <?php foreach ($servicios_pendientes as $servicio): ?>
+                    <?php if (!empty($servicios_activos)): ?>
+                        <?php foreach ($servicios_activos as $servicio): ?>
                             <tr>
                                 <td><?= $servicio['telefono'] ?></td>
                                 <td><?= $servicio['direccion'] ?></td>
                                 <td>
                                     <?= empty($servicio['observaciones']) ? 'sin observaciones' : $servicio['observaciones'] ?>
                                 </td>
-                                <td><?= date('H:i', strtotime($servicio['fecha_solicitud'])) ?></td>
                                 <td>
                                     <?php if ($servicio['condicion'] == 'aire'): ?>
                                         <span class="badge bg-danger">Aire</span>
@@ -166,11 +165,51 @@ unset($_SESSION['tipo_mensaje']);
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-primary btn-sm asignarServicio"
+                                    <?php
+                                    if (!empty($servicio['placa'])) {
+                                        echo $servicio['placa'] . ' - ' . $servicio['numero_movil'];
+                                    } else {
+                                        echo '-';
+                                    }
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php if ($servicio['estado'] == 'pendiente'): ?>
+                                        <span class="badge bg-warning">Pendiente</span>
+                                    <?php elseif ($servicio['estado'] == 'asignado'): ?>
+                                        <span class="badge bg-info">Asignado</span>
+                                    <?php elseif ($servicio['estado'] == 'en_camino'): ?>
+                                        <span class="badge bg-primary">En camino</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($servicio['estado'] == 'pendiente'): ?>
+                                        <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_solicitud'] ?>">
+                                            <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_solicitud']) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_asignacion'] ?>">
+                                            <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_asignacion']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($servicio['estado'] == 'pendiente'): ?>
+                                        <button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo"
+                                            data-id="<?= $servicio['id'] ?>">
+                                            <i class="bi bi-car-front"></i>
+                                        </button>
+                                    <?php elseif ($servicio['estado'] == 'asignado'): ?>
+                                        <button type="button" class="btn btn-info btn-sm cambiarMovil" title="Cambiar movil asignado"
+                                            data-id="<?= $servicio['id'] ?>">
+                                            <i class="bi bi-signpost-2"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    <button type="button" class="btn btn-success btn-sm finalizarServicio" title="Finalizar servicio"
                                         data-id="<?= $servicio['id'] ?>">
-                                        <i class="bi bi-car-front"></i> Asignar
+                                        <i class="bi bi-check-circle"></i>
                                     </button>
-                                    <button type="button" class="btn btn-danger btn-sm cancelarServicio"
+                                    <button type="button" class="btn btn-danger btn-sm cancelarServicio" title="Cancelar servicio"
                                         data-id="<?= $servicio['id'] ?>">
                                         <i class="bi bi-x-circle"></i>
                                     </button>
@@ -179,7 +218,7 @@ unset($_SESSION['tipo_mensaje']);
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="6" class="text-center">No hay servicios pendientes</td>
+                            <td colspan="8" class="text-center">No hay servicios activos</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -188,69 +227,47 @@ unset($_SESSION['tipo_mensaje']);
     </div>
 </div>
 
-<!-- Panel de servicios asignados y en curso -->
-<div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">
-            <i class="bi bi-car-front me-2"></i> Servicios en Curso
-        </h5>
-        <span class="badge bg-primary" id="contadorEnCurso"><?= count($servicios_asignados) + count($servicios_en_camino) ?></span>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover" id="tablaEnCurso">
-                <thead>
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Dirección</th>
-                        <th>Vehículo</th>
-                        <th>Estado</th>
-                        <th>Tiempo</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $servicios_en_curso = array_merge($servicios_asignados, $servicios_en_camino);
-                    if (!empty($servicios_en_curso)): ?>
-                        <?php foreach ($servicios_en_curso as $servicio): ?>
-                            <tr>
-                                <td><?= $servicio['telefono'] ?></td>
-                                <td><?= $servicio['direccion'] ?></td>
-                                <td><?= $servicio['placa'] ?></td>
-                                <td>
-                                    <?php if ($servicio['estado'] == 'asignado'): ?>
-                                        <span class="badge bg-info">Asignado</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-primary">En camino</span>
+<!-- Modal para cambiar vehículo -->
+<div class="modal fade" id="cambiarVehiculoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-left-right me-2"></i> Cambiar Vehículo Asignado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="cambiarServicioId">
+                <div class="mb-3">
+                    <p class="mb-1"><strong>Vehículo actual:</strong> <span id="vehiculoActual"></span></p>
+                </div>
+                <div class="mb-3">
+                    <label for="nuevoVehiculoSelect" class="form-label">Seleccione nuevo vehículo:</label>
+                    <select id="nuevoVehiculoSelect" class="form-select">
+                        <?php if (!empty($vehiculos) && !isset($vehiculos['error'])): ?>
+                            <?php foreach ($vehiculos as $vehiculo): ?>
+                                <option value="<?= $vehiculo['id'] ?>">
+                                    <?= htmlspecialchars($vehiculo['numero_movil']) ?> -
+                                    <?= htmlspecialchars($vehiculo['placa']) ?>
+                                    <?php if (!empty($vehiculo['modelo'])): ?>
+                                        (<?= htmlspecialchars($vehiculo['modelo']) ?>)
                                     <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_asignacion'] ?>">
-                                        <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_asignacion']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <?php if ($servicio['estado'] == 'asignado'): ?>
-                                        <button type="button" class="btn btn-info btn-sm enCaminoServicio"
-                                            data-id="<?= $servicio['id'] ?>">
-                                            <i class="bi bi-signpost-2"></i> En camino
-                                        </button>
-                                    <?php endif; ?>
-                                    <button type="button" class="btn btn-success btn-sm finalizarServicio"
-                                        data-id="<?= $servicio['id'] ?>">
-                                        <i class="bi bi-check-circle"></i> Finalizar
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="7" class="text-center">No hay servicios en curso</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <option value="" disabled>No hay vehículos disponibles</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> El vehículo actual quedará disponible y el nuevo vehículo será asignado a este servicio.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="confirmarCambioVehiculo" class="btn btn-primary">Cambiar Vehículo</button>
+            </div>
         </div>
     </div>
 </div>
@@ -420,7 +437,7 @@ unset($_SESSION['tipo_mensaje']);
             document.getElementById('nuevaDireccionForm').style.display = 'none';
             document.getElementById('nuevaDireccion').value = '';
         });
-       
+
 
         // Crear servicio
         document.getElementById('crearServicio').addEventListener('click', function() {
@@ -504,6 +521,87 @@ unset($_SESSION['tipo_mensaje']);
                 });
         });
 
+        // Abrir modal para cambiar vehículo
+        document.querySelectorAll('.cambiarMovil').forEach(button => {
+            button.addEventListener('click', function() {
+                const servicioId = this.getAttribute('data-id');
+                const fila = this.closest('tr');
+                const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
+
+                // Guardar ID del servicio en el modal
+                document.getElementById('cambiarServicioId').value = servicioId;
+                // Mostrar el vehículo actual
+                document.getElementById('vehiculoActual').textContent = vehiculoActual;
+
+                // Mostrar modal
+                new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
+            });
+        });
+
+        // Confirmar cambio de vehículo
+        document.getElementById('confirmarCambioVehiculo').addEventListener('click', function() {
+            const servicioId = document.getElementById('cambiarServicioId').value;
+            const nuevoVehiculoId = document.getElementById('nuevoVehiculoSelect').value;
+
+            if (!servicioId || !nuevoVehiculoId) {
+                alert('Debe seleccionar un vehículo para continuar');
+                return;
+            }
+
+            // Mostrar indicador de carga
+            const btnConfirmar = this;
+            const textoOriginal = btnConfirmar.innerHTML;
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = 'Procesando...';
+
+            const formData = new FormData();
+            formData.append('servicio_id', servicioId);
+            formData.append('vehiculo_id', nuevoVehiculoId);
+            formData.append('accion', 'cambiar_vehiculo');
+
+            fetch('../Processings/procesar_servicio.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error de red: ' + response.status);
+                    }
+                    return response.text().then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('Respuesta no válida:', text);
+                            throw new Error('Formato de respuesta inválido');
+                        }
+                    });
+                })
+                .then(data => {
+                    console.log('Respuesta:', data);
+
+                    // Restaurar botón
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.innerHTML = textoOriginal;
+
+                    if (data.error) {
+                        alert('Error: ' + data.mensaje);
+                    } else {
+                        alert('Vehículo cambiado correctamente');
+                        bootstrap.Modal.getInstance(document.getElementById('cambiarVehiculoModal')).hide();
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+
+                    // Restaurar botón
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.innerHTML = textoOriginal;
+
+                    alert('Error al procesar la solicitud: ' + error.message);
+                });
+        });
+
         // Finalizar servicio
         document.querySelectorAll('.finalizarServicio').forEach(button => {
             button.addEventListener('click', function() {
@@ -531,34 +629,6 @@ unset($_SESSION['tipo_mensaje']);
                             alert('Error al finalizar servicio');
                         });
                 }
-            });
-        });
-
-        // Marcar servicio en camino
-        document.querySelectorAll('.enCaminoServicio').forEach(button => {
-            button.addEventListener('click', function() {
-                const servicioId = this.getAttribute('data-id');
-
-                const formData = new FormData();
-                formData.append('servicio_id', servicioId);
-                formData.append('accion', 'en_camino');
-
-                fetch('../Processings/procesar_servicio.php', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            alert('Error al actualizar estado: ' + data.mensaje);
-                        } else {
-                            location.reload();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error al actualizar estado');
-                    });
             });
         });
 
@@ -679,8 +749,6 @@ unset($_SESSION['tipo_mensaje']);
                             // Seleccionar automáticamente la nueva dirección
                             direccionSeleccionada = data.direccion_id;
 
-                            // En lugar de llamar a cargarDirecciones, crea la dirección directamente en el DOM
-                            // Esto evita una llamada AJAX adicional y garantiza que la dirección se muestre
                             const listaDirecciones = document.getElementById('listaDirecciones');
                             const item = document.createElement('button');
                             item.type = 'button';

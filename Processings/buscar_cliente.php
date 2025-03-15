@@ -31,7 +31,7 @@ if ($cliente) {
     // Cliente encontrado - Obtener sus direcciones frecuentes
     require_once '../Controllers/DireccionController.php';
     $direccionController = new DireccionController($pdo);
-    $direcciones = $direccionController->obtenerDireccionesFrecuentes($cliente['id'], 5);
+    $direcciones = $direccionController->obtenerUltimasDirecciones($cliente['id'], 5);
     
     if (isset($direcciones['error'])) {
         $direcciones = []; // Si hay error, inicializar como array vacío

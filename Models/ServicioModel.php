@@ -142,6 +142,29 @@ class Servicio
     }
 
     /**
+     * Lista todos los servicios activos (no finalizados ni cancelados)
+     */
+    public function listarServiciosActivos()
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+            SELECT s.*, c.telefono, d.direccion, v.placa, v.numero_movil 
+            FROM servicios s
+            LEFT JOIN clientes c ON s.cliente_id = c.id
+            LEFT JOIN direcciones d ON s.direccion_id = d.id
+            LEFT JOIN vehiculos v ON s.vehiculo_id = v.id
+            WHERE s.estado NOT IN ('finalizado', 'cancelado')
+            ORDER BY s.fecha_solicitud DESC
+        ");
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    /**
      * Obtiene la lista de servicios del día actual
      */
     public function obtenerServiciosHoy()

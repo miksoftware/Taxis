@@ -248,7 +248,7 @@ class Vehiculo
             }
             
             // Ordenar resultados
-            $sql .= " ORDER BY numero_movil ASC";
+            $sql .= " ORDER BY id ASC";
             
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);

@@ -5,14 +5,16 @@ require_once __DIR__ . '/../Models/ClienteModel.php';
 require_once __DIR__ . '/../Models/DireccionModel.php';
 require_once __DIR__ . '/../Models/VehiculoModel.php';
 
-class ServicioController {
+class ServicioController
+{
     private $servicioModel;
     private $clienteModel;
     private $direccionModel;
     private $vehiculoModel;
     private $pdo;
 
-    public function __construct($pdo) {
+    public function __construct($pdo)
+    {
         $this->pdo = $pdo;
         $this->servicioModel = new Servicio($pdo);
         $this->clienteModel = new Cliente($pdo);
@@ -23,23 +25,24 @@ class ServicioController {
     /**
      * Crea un nuevo servicio
      */
-    public function crear($datos) {
+    public function crear($datos)
+    {
         // Validar datos necesarios
         if (!isset($datos['cliente_id']) || !isset($datos['direccion_id']) || !isset($datos['condicion'])) {
             return ['error' => true, 'mensaje' => 'Datos incompletos'];
         }
-    
+
         // Verificar que el cliente y la dirección existen
         $cliente = $this->clienteModel->obtenerPorId($datos['cliente_id']);
         if (!$cliente) {
             return ['error' => true, 'mensaje' => 'Cliente no encontrado'];
         }
-    
+
         $direccion = $this->direccionModel->obtenerPorId($datos['direccion_id']);
         if (!$direccion) {
             return ['error' => true, 'mensaje' => 'Dirección no encontrada'];
         }
-    
+
         // Crear el servicio
         $servicio = [
             'cliente_id' => $datos['cliente_id'],
@@ -50,14 +53,15 @@ class ServicioController {
             'fecha_solicitud' => date('Y-m-d H:i:s'),
             'operador_id' => isset($datos['operador_id']) ? $datos['operador_id'] : $_SESSION['usuario_id']
         ];
-    
+
         return $this->servicioModel->crear($servicio);
     }
 
     /**
      * Asigna un vehículo a un servicio
      */
-    public function asignar($servicio_id, $vehiculo_id) {
+    public function asignar($servicio_id, $vehiculo_id)
+    {
         // Validar datos
         if (!$servicio_id || !$vehiculo_id) {
             return ['error' => true, 'mensaje' => 'Datos incompletos'];
@@ -110,10 +114,120 @@ class ServicioController {
         return ['error' => false, 'mensaje' => 'Servicio asignado correctamente'];
     }
 
+
+    /**
+     * Cambia el vehículo asignado a un servicio
+     */
+    public function cambiarVehiculo($servicio_id, $nuevo_vehiculo_id)
+    {
+        // Validar datos
+        if (!$servicio_id || !$nuevo_vehiculo_id) {
+            return [
+                'error' => true,
+                'mensaje' => 'ID de servicio o ID de vehículo no proporcionados'
+            ];
+        }
+
+        // Verificar que el servicio existe y está en estado asignado
+        $servicio = $this->servicioModel->obtenerPorId($servicio_id);
+        if (!$servicio) {
+            return [
+                'error' => true,
+                'mensaje' => 'Servicio no encontrado'
+            ];
+        }
+
+        if ($servicio['estado'] !== 'asignado' && $servicio['estado'] !== 'en_camino') {
+            return [
+                'error' => true,
+                'mensaje' => 'Solo se puede cambiar el vehículo de servicios en estado "asignado" o "en camino"'
+            ];
+        }
+
+        // Verificar que el nuevo vehículo existe y está disponible
+        $nuevoVehiculo = $this->vehiculoModel->obtenerPorId($nuevo_vehiculo_id);
+        if (isset($nuevoVehiculo['error'])) { // Verificar si hay error en la respuesta del modelo
+            return [
+                'error' => true,
+                'mensaje' => 'Vehículo no encontrado'
+            ];
+        }
+
+        if ($nuevoVehiculo['estado'] !== 'disponible') {
+            return [
+                'error' => true,
+                'mensaje' => 'El vehículo seleccionado no está disponible'
+            ];
+        }
+
+        try {
+            // Comenzar transacción
+            $this->pdo->beginTransaction();
+
+            // Obtener el vehículo actual
+            $vehiculo_actual_id = $servicio['vehiculo_id'];
+
+            // Actualizar el servicio con el nuevo vehículo
+            $datos_servicio = [
+                'vehiculo_id' => $nuevo_vehiculo_id,
+                'fecha_actualizacion' => date('Y-m-d H:i:s')
+            ];
+
+            $resultado_servicio = $this->servicioModel->actualizar($servicio_id, $datos_servicio);
+            if (isset($resultado_servicio['error']) && $resultado_servicio['error']) {
+                throw new Exception("Error al actualizar servicio: " . $resultado_servicio['mensaje']);
+            }
+
+            // Liberar el vehículo anterior
+            if ($vehiculo_actual_id) {
+                $vehiculo_actual = $this->vehiculoModel->obtenerPorId($vehiculo_actual_id);
+                if (!isset($vehiculo_actual['error'])) {
+                    $resultado_liberar = $this->vehiculoModel->cambiarEstado($vehiculo_actual_id, 'disponible');
+                    if (isset($resultado_liberar['error']) && $resultado_liberar['error']) {
+                        throw new Exception("Error al liberar vehículo actual: " . $resultado_liberar['mensaje']);
+                    }
+                }
+            }
+
+            // Actualizar estado del nuevo vehículo a ocupado
+            $resultado_ocupar = $this->vehiculoModel->cambiarEstado($nuevo_vehiculo_id, 'ocupado');
+            if (isset($resultado_ocupar['error']) && $resultado_ocupar['error']) {
+                throw new Exception("Error al ocupar nuevo vehículo: " . $resultado_ocupar['mensaje']);
+            }
+
+            // Registrar el cambio en el historial
+            $usuario_id = isset($_SESSION['usuario_id']) ? $_SESSION['usuario_id'] : 0;
+            $this->servicioModel->registrarHistorialEstado(
+                $servicio_id,
+                'cambio_vehiculo: ' . $vehiculo_actual_id,
+                'cambio_vehiculo: ' . $nuevo_vehiculo_id,
+                $usuario_id
+            );
+
+            // Confirmar transacción
+            $this->pdo->commit();
+
+            return [
+                'error' => false,
+                'mensaje' => 'Vehículo cambiado correctamente'
+            ];
+        } catch (Exception $e) {
+            // Revertir cambios si hay error
+            $this->pdo->rollBack();
+            error_log("Error en cambio de vehículo: " . $e->getMessage());
+            return [
+                'error' => true,
+                'mensaje' => 'Error al cambiar vehículo: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
     /**
      * Actualiza el estado del servicio a 'en_camino'
      */
-    public function enCamino($servicio_id) {
+    public function enCamino($servicio_id)
+    {
         // Validar datos
         if (!$servicio_id) {
             return ['error' => true, 'mensaje' => 'ID de servicio no proporcionado'];
@@ -137,10 +251,12 @@ class ServicioController {
         return $resultado;
     }
 
+
     /**
      * Finaliza un servicio
      */
-    public function finalizar($servicio_id) {
+    public function finalizar($servicio_id)
+    {
         // Validar datos
         if (!$servicio_id) {
             return ['error' => true, 'mensaje' => 'ID de servicio no proporcionado'];
@@ -179,7 +295,8 @@ class ServicioController {
     /**
      * Cancela un servicio pendiente
      */
-    public function cancelar($servicio_id) {
+    public function cancelar($servicio_id)
+    {
         // Validar datos
         if (!$servicio_id) {
             return ['error' => true, 'mensaje' => 'ID de servicio no proporcionado'];
@@ -191,15 +308,17 @@ class ServicioController {
             return ['error' => true, 'mensaje' => 'Servicio no encontrado'];
         }
 
-        if ($servicio['estado'] !== 'pendiente') {
-            return ['error' => true, 'mensaje' => 'Solo se pueden cancelar servicios pendientes'];
-        }
-
         // Actualizar el servicio
         $datos_servicio = [
             'estado' => 'cancelado',
             'fecha_fin' => date('Y-m-d H:i:s')
         ];
+
+        // Liberar el vehículo
+        $resultado_vehiculo = $this->vehiculoModel->cambiarEstado($servicio['vehiculo_id'], 'disponible');
+        if (isset($resultado_vehiculo['error']) && $resultado_vehiculo['error']) {
+            return $resultado_vehiculo;
+        }
 
         return $this->servicioModel->actualizar($servicio_id, $datos_servicio);
     }
@@ -207,7 +326,8 @@ class ServicioController {
     /**
      * Lista los servicios por estado
      */
-    public function listarPorEstado($estado) {
+    public function listarPorEstado($estado)
+    {
         // Validar estado
         $estados_validos = ['pendiente', 'asignado', 'en_camino', 'finalizado', 'cancelado'];
         if (!in_array($estado, $estados_validos)) {
@@ -218,15 +338,24 @@ class ServicioController {
     }
 
     /**
+     * Lista todos los servicios activos (no finalizados ni cancelados)
+     */
+    public function listarServiciosActivos()
+    {
+        return $this->servicioModel->listarServiciosActivos();
+    }
+
+    /**
      * Calcula el tiempo transcurrido desde una fecha hasta ahora
      */
-    public function calcularTiempoTranscurrido($fecha_inicio) {
+    public function calcularTiempoTranscurrido($fecha_inicio)
+    {
         $inicio = new DateTime($fecha_inicio);
         $ahora = new DateTime();
-        
+
         $diff = $ahora->diff($inicio);
         $minutos = ($diff->days * 24 * 60) + ($diff->h * 60) + $diff->i;
-        
+
         if ($minutos < 60) {
             return $minutos . ' min';
         } else {
@@ -237,73 +366,76 @@ class ServicioController {
     }
 
     /**
- * Cuenta la cantidad de servicios de un cliente en un mes específico
- */
-public function contarPorClienteMes($cliente_id, $mes, $anio) {
-    if (!$cliente_id || !$mes || !$anio) {
-        return 0;
-    }
-    
-    try {
-        $inicio_mes = sprintf('%d-%02d-01 00:00:00', $anio, $mes);
-        $ultimo_dia = date('t', strtotime($inicio_mes)); // Obtiene el último día del mes
-        $fin_mes = sprintf('%d-%02d-%d 23:59:59', $anio, $mes, $ultimo_dia);
-        
-        $sql = "
+     * Cuenta la cantidad de servicios de un cliente en un mes específico
+     */
+    public function contarPorClienteMes($cliente_id, $mes, $anio)
+    {
+        if (!$cliente_id || !$mes || !$anio) {
+            return 0;
+        }
+
+        try {
+            $inicio_mes = sprintf('%d-%02d-01 00:00:00', $anio, $mes);
+            $ultimo_dia = date('t', strtotime($inicio_mes)); // Obtiene el último día del mes
+            $fin_mes = sprintf('%d-%02d-%d 23:59:59', $anio, $mes, $ultimo_dia);
+
+            $sql = "
             SELECT COUNT(*) as total 
             FROM servicios 
             WHERE cliente_id = :cliente_id 
             AND fecha_solicitud BETWEEN :inicio_mes AND :fin_mes
         ";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
-        $stmt->bindParam(':inicio_mes', $inicio_mes, PDO::PARAM_STR);
-        $stmt->bindParam(':fin_mes', $fin_mes, PDO::PARAM_STR);
-        $stmt->execute();
-        
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-        return intval($resultado['total']);
-    } catch (PDOException $e) {
-        error_log('Error al contar servicios por mes: ' . $e->getMessage());
-        return 0;
-    }
-}
 
-/**
- * Cuenta el total de servicios de un cliente
- */
-public function contarPorCliente($cliente_id) {
-    if (!$cliente_id) {
-        return 0;
-    }
-    
-    try {
-        $sql = "SELECT COUNT(*) as total FROM servicios WHERE cliente_id = :cliente_id";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-        return intval($resultado['total']);
-    } catch (PDOException $e) {
-        error_log('Error al contar servicios totales: ' . $e->getMessage());
-        return 0;
-    }
-}
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->bindParam(':inicio_mes', $inicio_mes, PDO::PARAM_STR);
+            $stmt->bindParam(':fin_mes', $fin_mes, PDO::PARAM_STR);
+            $stmt->execute();
 
-/**
- * Obtiene el historial de servicios de un cliente con paginación
- */
-public function obtenerHistorialCliente($cliente_id, $limite = 10, $offset = 0) {
-    if (!$cliente_id) {
-        return ['error' => true, 'mensaje' => 'ID de cliente no proporcionado'];
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            return intval($resultado['total']);
+        } catch (PDOException $e) {
+            error_log('Error al contar servicios por mes: ' . $e->getMessage());
+            return 0;
+        }
     }
-    
-    try {
-        // Consulta para obtener los servicios
-        $sql = "
+
+    /**
+     * Cuenta el total de servicios de un cliente
+     */
+    public function contarPorCliente($cliente_id)
+    {
+        if (!$cliente_id) {
+            return 0;
+        }
+
+        try {
+            $sql = "SELECT COUNT(*) as total FROM servicios WHERE cliente_id = :cliente_id";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            return intval($resultado['total']);
+        } catch (PDOException $e) {
+            error_log('Error al contar servicios totales: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Obtiene el historial de servicios de un cliente con paginación
+     */
+    public function obtenerHistorialCliente($cliente_id, $limite = 10, $offset = 0)
+    {
+        if (!$cliente_id) {
+            return ['error' => true, 'mensaje' => 'ID de cliente no proporcionado'];
+        }
+
+        try {
+            // Consulta para obtener los servicios
+            $sql = "
             SELECT s.*, 
                    d.direccion,
                    v.numero_movil, 
@@ -315,52 +447,53 @@ public function obtenerHistorialCliente($cliente_id, $limite = 10, $offset = 0) 
             ORDER BY s.fecha_solicitud DESC
             LIMIT :limite OFFSET :offset
         ";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
-        $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
-        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $servicios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Consulta para contar el total de servicios
-        $sql_count = "SELECT COUNT(*) as total FROM servicios WHERE cliente_id = :cliente_id";
-        
-        $stmt_count = $this->pdo->prepare($sql_count);
-        $stmt_count->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
-        $stmt_count->execute();
-        
-        $total = $stmt_count->fetch(PDO::FETCH_ASSOC)['total'];
-        
-        return [
-            'servicios' => $servicios,
-            'total' => $total
-        ];
-    } catch (PDOException $e) {
-        return [
-            'error' => true,
-            'mensaje' => 'Error al obtener historial de servicios: ' . $e->getMessage()
-        ];
-    }
-}
 
-/**
- * Obtiene estadísticas de servicios de un cliente
- */
-public function obtenerEstadisticasCliente($cliente_id) {
-    if (!$cliente_id) {
-        return [
-            'total' => 0,
-            'finalizados' => 0,
-            'cancelados' => 0,
-            'frecuencia_mensual' => 0,
-            'ultima_solicitud' => null
-        ];
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $servicios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Consulta para contar el total de servicios
+            $sql_count = "SELECT COUNT(*) as total FROM servicios WHERE cliente_id = :cliente_id";
+
+            $stmt_count = $this->pdo->prepare($sql_count);
+            $stmt_count->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt_count->execute();
+
+            $total = $stmt_count->fetch(PDO::FETCH_ASSOC)['total'];
+
+            return [
+                'servicios' => $servicios,
+                'total' => $total
+            ];
+        } catch (PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => 'Error al obtener historial de servicios: ' . $e->getMessage()
+            ];
+        }
     }
-    
-    try {
-        $sql = "
+
+    /**
+     * Obtiene estadísticas de servicios de un cliente
+     */
+    public function obtenerEstadisticasCliente($cliente_id)
+    {
+        if (!$cliente_id) {
+            return [
+                'total' => 0,
+                'finalizados' => 0,
+                'cancelados' => 0,
+                'frecuencia_mensual' => 0,
+                'ultima_solicitud' => null
+            ];
+        }
+
+        try {
+            $sql = "
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
@@ -369,53 +502,52 @@ public function obtenerEstadisticasCliente($cliente_id) {
             FROM servicios
             WHERE cliente_id = :cliente_id
         ";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Calcular frecuencia mensual (promedio servicios por mes)
-        $sql_primer_servicio = "
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Calcular frecuencia mensual (promedio servicios por mes)
+            $sql_primer_servicio = "
             SELECT MIN(fecha_solicitud) as primer_servicio
             FROM servicios
             WHERE cliente_id = :cliente_id
         ";
-        
-        $stmt_primer = $this->pdo->prepare($sql_primer_servicio);
-        $stmt_primer->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
-        $stmt_primer->execute();
-        
-        $primer_servicio = $stmt_primer->fetch(PDO::FETCH_ASSOC)['primer_servicio'];
-        
-        if ($primer_servicio) {
-            $fecha_inicio = new DateTime($primer_servicio);
-            $fecha_actual = new DateTime();
-            
-            $diff = $fecha_inicio->diff($fecha_actual);
-            $meses = ($diff->y * 12) + $diff->m;
-            
-            if ($meses > 0) {
-                $resultado['frecuencia_mensual'] = round($resultado['total'] / $meses, 1);
+
+            $stmt_primer = $this->pdo->prepare($sql_primer_servicio);
+            $stmt_primer->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt_primer->execute();
+
+            $primer_servicio = $stmt_primer->fetch(PDO::FETCH_ASSOC)['primer_servicio'];
+
+            if ($primer_servicio) {
+                $fecha_inicio = new DateTime($primer_servicio);
+                $fecha_actual = new DateTime();
+
+                $diff = $fecha_inicio->diff($fecha_actual);
+                $meses = ($diff->y * 12) + $diff->m;
+
+                if ($meses > 0) {
+                    $resultado['frecuencia_mensual'] = round($resultado['total'] / $meses, 1);
+                } else {
+                    $resultado['frecuencia_mensual'] = $resultado['total']; // Todo en el mismo mes
+                }
             } else {
-                $resultado['frecuencia_mensual'] = $resultado['total']; // Todo en el mismo mes
+                $resultado['frecuencia_mensual'] = 0;
             }
-        } else {
-            $resultado['frecuencia_mensual'] = 0;
+
+            return $resultado;
+        } catch (PDOException $e) {
+            error_log('Error al obtener estadísticas del cliente: ' . $e->getMessage());
+            return [
+                'total' => 0,
+                'finalizados' => 0,
+                'cancelados' => 0,
+                'frecuencia_mensual' => 0,
+                'ultima_solicitud' => null
+            ];
         }
-        
-        return $resultado;
-    } catch (PDOException $e) {
-        error_log('Error al obtener estadísticas del cliente: ' . $e->getMessage());
-        return [
-            'total' => 0,
-            'finalizados' => 0,
-            'cancelados' => 0,
-            'frecuencia_mensual' => 0,
-            'ultima_solicitud' => null
-        ];
     }
-}
-    
 }
