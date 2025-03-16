@@ -633,6 +633,8 @@ if ($hayFiltros) {
             params.append('fecha_inicio', document.getElementById('fecha_inicio').value);
             params.append('fecha_fin', document.getElementById('fecha_fin').value);
 
+            console.log("Realizando fetch a: ../Processings/obtener_historial_sanciones_vehiculo.php?" + params.toString());
+
             // Realizar solicitud al servidor para obtener historial de sanciones del vehículo
             fetch('../Processings/obtener_historial_sanciones_vehiculo.php?' + params.toString())
                 .then(response => {
@@ -649,117 +651,80 @@ if ($hayFiltros) {
                     // Datos del vehículo
                     const vehiculo = data.vehiculo || {};
                     const sanciones = data.sanciones || [];
-                    const conductores = data.conductores || [];
 
                     let html = `
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="m-0">Vehículo: ${vehiculo.placa || 'N/A'} (Móvil: ${vehiculo.numero_movil || 'N/A'})</h5>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="m-0">Vehículo: ${vehiculo.placa || 'N/A'} (Móvil: ${vehiculo.numero_movil || 'N/A'})</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Marca:</strong> ${vehiculo.marca || 'N/A'}</p>
+                            <p><strong>Modelo:</strong> ${vehiculo.modelo || 'N/A'}</p>
+                            <p><strong>Color:</strong> ${vehiculo.color || 'N/A'}</p>
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p><strong>Marca:</strong> ${vehiculo.marca || 'N/A'}</p>
-                                    <p><strong>Modelo:</strong> ${vehiculo.modelo || 'N/A'}</p>
-                                    <p><strong>Color:</strong> ${vehiculo.color || 'N/A'}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p><strong>Estado:</strong> ${formatearEstadoVehiculo(vehiculo.estado)}</p>
-                                    <p><strong>Total Sanciones:</strong> ${sanciones.length}</p>
-                                    <p><strong>Propietario:</strong> ${vehiculo.propietario_nombre || 'N/A'}</p>
-                                </div>
-                            </div>
+                        <div class="col-md-6">
+                            <p><strong>Estado:</strong> ${formatearEstadoVehiculo(vehiculo.estado)}</p>
+                            <p><strong>Total Sanciones:</strong> ${sanciones.length}</p>
+                            <p><strong>Propietario:</strong> ${vehiculo.propietario_nombre || 'N/A'}</p>
                         </div>
-                    </div>`;
-
-                    // Mostrar conductores si existen
-                    if (conductores && conductores.length > 0) {
-                        html += `
-                        <div class="card mb-4">
-                            <div class="card-header bg-secondary text-white">
-                                <h5 class="m-0">Conductores asignados</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Nombre</th>
-                                                <th>Cédula</th>
-                                                <th>Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>`;
-
-                        conductores.forEach(conductor => {
-                            html += `
-                                <tr>
-                                    <td>${conductor.nombre || 'N/A'}</td>
-                                    <td>${conductor.cedula || 'N/A'}</td>
-                                    <td>${formatearEstadoConductor(conductor.estado)}</td>
-                                </tr>`;
-                        });
-
-                        html += `
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>`;
-                    }
+                    </div>
+                </div>
+            </div>`;
 
                     // Mostrar historial de sanciones
                     if (sanciones.length > 0) {
                         html += `
-                        <div class="card mb-4">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="m-0">Historial de Sanciones</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Fecha</th>
-                                                <th>Artículo</th>
-                                                <th>Duración</th>
-                                                <th>Estado</th>
-                                                <th>Aplicada por</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>`;
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="m-0">Historial de Sanciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Artículo</th>
+                                        <th>Duración</th>
+                                        <th>Estado</th>
+                                        <th>Aplicada por</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
 
                         sanciones.forEach(sancion => {
                             html += `
-                            <tr>
-                                <td>${formatearFechaHora(sancion.fecha_inicio)}</td>
-                                <td>${sancion.articulo_codigo || 'N/A'} - ${sancion.articulo_descripcion || 'N/A'}</td>
-                                <td>${formatearTiempo(sancion.tiempo_sancion)}</td>
-                                <td>${formatearEstado(sancion.estado)}</td>
-                                <td>${sancion.usuario_nombre || 'N/A'}</td>
-                            </tr>`;
+                    <tr>
+                        <td>${formatearFechaHora(sancion.fecha_inicio)}</td>
+                        <td>${sancion.articulo_codigo || 'N/A'} - ${sancion.articulo_descripcion || 'N/A'}</td>
+                        <td>${formatearTiempo(sancion.tiempo_sancion)}</td>
+                        <td>${formatearEstado(sancion.estado)}</td>
+                        <td>${sancion.usuario_nombre || 'N/A'}</td>
+                    </tr>`;
                         });
 
                         html += `
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>`;
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
 
                         // Añadir gráfico de artículos aplicados a este vehículo
                         if (data.estadisticas && data.estadisticas.articulos) {
                             html += `
-                            <div class="card mb-4">
-                                <div class="card-header bg-success text-white">
-                                    <h5 class="m-0">Distribución de Artículos</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container" style="position: relative; height:250px;">
-                                        <canvas id="graficoArticulosVehiculo"></canvas>
-                                    </div>
-                                </div>
-                            </div>`;
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="m-0">Distribución de Artículos</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="position: relative; height:250px;">
+                                <canvas id="graficoArticulosVehiculo"></canvas>
+                            </div>
+                        </div>
+                    </div>`;
                         }
                     } else {
                         html += `<div class="alert alert-info">No hay historial de sanciones para este vehículo en el período seleccionado.</div>`;
@@ -814,8 +779,13 @@ if ($hayFiltros) {
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    contenido.innerHTML = '<div class="alert alert-danger">Error al cargar los detalles del vehículo</div>';
+                    console.error('Error completo:', error);
+                    contenido.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Error al cargar los detalles del vehículo</h5>
+                    <p>Detalle: ${error.message || 'Error desconocido'}</p>
+                    <p>Verifica que la función obtener() exista en el VehiculoController.</p>
+                </div>`;
                 });
         }
 

@@ -19,7 +19,6 @@ $pdo = $db->getPdo();
 // Incluir controladores necesarios
 require_once '../Controllers/VehiculoController.php';
 require_once '../Controllers/SancionController.php';
-require_once '../Controllers/ConductorController.php';
 
 // Instanciar controladores
 $vehiculoController = new VehiculoController($pdo);
@@ -59,24 +58,17 @@ try {
         $sanciones = [];
     }
     
-    // Obtener conductores asociados a este vehículo
-    $conductores = $conductorController->obtenerPorVehiculoId($vehiculo_id);
-    
-    if (isset($conductores['error'])) {
-        $conductores = [];
-    }
-    
     // Generar estadísticas de artículos para este vehículo
     $estadisticas = ['articulos' => []];
     
     if (count($sanciones) > 0) {
         foreach ($sanciones as $sancion) {
-            $codigo = $sancion['articulo_codigo'];
+            $codigo = $sancion['articulo_codigo'] ?? 'N/A';
             
             if (!isset($estadisticas['articulos'][$codigo])) {
                 $estadisticas['articulos'][$codigo] = [
                     'codigo' => $codigo,
-                    'descripcion' => $sancion['articulo_descripcion'],
+                    'descripcion' => $sancion['articulo_descripcion'] ?? 'Sin descripción',
                     'count' => 0
                 ];
             }
@@ -90,7 +82,6 @@ try {
         'error' => false,
         'vehiculo' => $vehiculo,
         'sanciones' => $sanciones,
-        'conductores' => $conductores,
         'estadisticas' => $estadisticas
     ];
     
