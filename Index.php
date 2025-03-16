@@ -158,7 +158,6 @@ unset($_SESSION['errores']);
                                 id="rol" name="rol" required>
                                 <option value="" selected disabled>Seleccione un rol</option>
                                 <option value="administrador" <?php echo (isset($form_data['rol']) && $form_data['rol'] === 'administrador') ? 'selected' : ''; ?>>Administrador</option>
-                                <option value="operador" <?php echo (isset($form_data['rol']) && $form_data['rol'] === 'operador') ? 'selected' : ''; ?>>Operador</option>
                             </select>
                             <?php if (isset($errores['rol'])): ?>
                                 <div class="invalid-feedback"><?php echo $errores['rol']; ?></div>

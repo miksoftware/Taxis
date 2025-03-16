@@ -56,7 +56,7 @@ unset($_SESSION['tipo_mensaje']);
         <i class="bi bi-car-front me-2"></i> Vehículos registrados
     </h5>
     <div>
-        <a href="sanciones.php" class="btn btn-warning me-2">
+        <a href="Sanciones.php" class="btn btn-warning me-2">
             <i class="bi bi-exclamation-triangle"></i> Ver vehículos sancionados
         </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoVehiculoModal">

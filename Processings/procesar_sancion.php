@@ -114,14 +114,14 @@ switch ($accion) {
         if (empty($_POST['id'])) {
             $_SESSION['mensaje'] = "ID de sanción no proporcionado";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/sanciones.php');
+            header('Location: ../Views/Sanciones.php');
             exit;
         }
         
         if (empty($_POST['comentario'])) {
             $_SESSION['mensaje'] = "Debe ingresar un motivo para anular la sanción";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/sanciones.php');
+            header('Location: ../Views/Sanciones.php');
             exit;
         }
         
@@ -130,14 +130,14 @@ switch ($accion) {
         if (isset($sancion['error']) || !$sancion) {
             $_SESSION['mensaje'] = "Error: La sanción no existe";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/sanciones.php');
+            header('Location: ../Views/Sanciones.php');
             exit;
         }
         
         if ($sancion['estado'] !== 'activa') {
             $_SESSION['mensaje'] = "Error: Solo se pueden anular sanciones activas";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/sanciones.php');
+            header('Location: ../Views/Sanciones.php');
             exit;
         }
         
@@ -152,7 +152,7 @@ switch ($accion) {
             $_SESSION['tipo_mensaje'] = "success";
         }
         
-        header('Location: ../Views/sanciones.php');
+        header('Location: ../Views/Sanciones.php');
         break;
         
     case 'verificar_vencimientos':
@@ -160,7 +160,7 @@ switch ($accion) {
         if (!isset($_SESSION['usuario_rol']) || $_SESSION['usuario_rol'] !== 'administrador') {
             $_SESSION['mensaje'] = "No tiene permisos para realizar esta acción";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/sanciones.php');
+            header('Location: ../Views/Sanciones.php');
             exit;
         }
         
@@ -180,7 +180,7 @@ switch ($accion) {
             }
         }
         
-        header('Location: ../Views/sanciones.php');
+        header('Location: ../Views/Sanciones.php');
         break;
         
     default:

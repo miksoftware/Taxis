@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\xampp\htdocs\GitHub\Taxis\Views\usuarios.php
+// filepath: c:\xampp\htdocs\GitHub\Taxis\Views\Usuarios.php
 // Iniciar sesión si no está iniciada
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

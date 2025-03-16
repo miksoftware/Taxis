@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\xampp\htdocs\GitHub\Taxis\Views\sanciones.php
+// filepath: c:\xampp\htdocs\GitHub\Taxis\Views\Sanciones.php
 // Iniciar sesión si no está iniciada
 session_start();
 // Incluir el encabezado

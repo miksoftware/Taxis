@@ -22,7 +22,7 @@ if ($_SESSION['usuario_rol'] !== 'administrador') {
 if (!isset($_POST['accion'])) {
     $_SESSION['mensaje'] = "Acción no especificada";
     $_SESSION['tipo_mensaje'] = "danger";
-    header('Location: ../Views/usuarios.php');
+    header('Location: ../Views/Usuarios.php');
     exit;
 }
 
@@ -46,7 +46,7 @@ switch ($accion) {
             if (!isset($_POST[$campo]) || empty($_POST[$campo])) {
                 $_SESSION['mensaje'] = "Todos los campos marcados con * son obligatorios";
                 $_SESSION['tipo_mensaje'] = "danger";
-                header('Location: ../Views/usuarios.php');
+                header('Location: ../Views/Usuarios.php');
                 exit;
             }
         }
@@ -55,7 +55,7 @@ switch ($accion) {
         if ($_POST['password'] !== $_POST['confirmPassword']) {
             $_SESSION['mensaje'] = "Las contraseñas no coinciden";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -82,7 +82,7 @@ switch ($accion) {
             $_SESSION['tipo_mensaje'] = "success";
         }
         
-        header('Location: ../Views/usuarios.php');
+        header('Location: ../Views/Usuarios.php');
         break;
         
     case 'actualizar':
@@ -90,7 +90,7 @@ switch ($accion) {
         if (!isset($_POST['id']) || empty($_POST['id'])) {
             $_SESSION['mensaje'] = "ID de usuario no especificado";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -100,7 +100,7 @@ switch ($accion) {
             if (!isset($_POST[$campo]) || empty($_POST[$campo])) {
                 $_SESSION['mensaje'] = "Todos los campos marcados con * son obligatorios";
                 $_SESSION['tipo_mensaje'] = "danger";
-                header('Location: ../Views/usuarios.php');
+                header('Location: ../Views/Usuarios.php');
                 exit;
             }
         }
@@ -127,7 +127,7 @@ switch ($accion) {
             $_SESSION['tipo_mensaje'] = "success";
         }
         
-        header('Location: ../Views/usuarios.php');
+        header('Location: ../Views/Usuarios.php');
         break;
         
     case 'cambiar_estado':
@@ -135,7 +135,7 @@ switch ($accion) {
         if (!isset($_POST['id']) || empty($_POST['id']) || !isset($_POST['estado'])) {
             $_SESSION['mensaje'] = "Datos incompletos para cambiar el estado";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -144,7 +144,7 @@ switch ($accion) {
         if ($id === $_SESSION['usuario_id']) {
             $_SESSION['mensaje'] = "No puede cambiar su propio estado";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -160,7 +160,7 @@ switch ($accion) {
             $_SESSION['tipo_mensaje'] = "success";
         }
         
-        header('Location: ../Views/usuarios.php');
+        header('Location: ../Views/Usuarios.php');
         break;
         
     case 'reset_password':
@@ -168,7 +168,7 @@ switch ($accion) {
         if (!isset($_POST['id']) || empty($_POST['id'])) {
             $_SESSION['mensaje'] = "ID de usuario no especificado";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -176,14 +176,14 @@ switch ($accion) {
         if (empty($_POST['new_password']) || empty($_POST['confirm_new_password'])) {
             $_SESSION['mensaje'] = "Debe proporcionar una nueva contraseña";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
         if ($_POST['new_password'] !== $_POST['confirm_new_password']) {
             $_SESSION['mensaje'] = "Las contraseñas no coinciden";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -191,7 +191,7 @@ switch ($accion) {
         if (strlen($_POST['new_password']) < 8) {
             $_SESSION['mensaje'] = "La contraseña debe tener al menos 8 caracteres";
             $_SESSION['tipo_mensaje'] = "danger";
-            header('Location: ../Views/usuarios.php');
+            header('Location: ../Views/Usuarios.php');
             exit;
         }
         
@@ -209,13 +209,13 @@ switch ($accion) {
             $_SESSION['tipo_mensaje'] = "success";
         }
         
-        header('Location: ../Views/usuarios.php');
+        header('Location: ../Views/Usuarios.php');
         break;
         
     default:
         $_SESSION['mensaje'] = "Acción no reconocida";
         $_SESSION['tipo_mensaje'] = "warning";
-        header('Location: ../Views/usuarios.php');
+        header('Location: ../Views/Usuarios.php');
 }
 
 exit;

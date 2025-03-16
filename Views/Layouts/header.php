@@ -65,23 +65,23 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                 <div class="d-flex flex-column">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Dashboard.php' ? 'active' : ''; ?>" href="Dashboard.php">
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'servicios.php' ? 'active' : ''; ?>" href="servicios.php">
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Servicios.php' ? 'active' : ''; ?>" href="Servicios.php">
                                 <i class="bi bi-receipt-cutoff"></i> Recepción
                             </a>
                         </li>
                         <?php if ($usuario_rol === 'administrador'): ?>
                             <li class="nav-item">
-                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'usuarios.php' ? 'active' : ''; ?>" href="usuarios.php">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Usuarios.php' ? 'active' : ''; ?>" href="Usuarios.php">
                                     <i class="bi bi-people"></i> Usuarios
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'clientes.php' ? 'active' : ''; ?>" href="clientes.php">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Clientes.php' ? 'active' : ''; ?>" href="Clientes.php">
                                     <i class="bi bi-people"></i> Clientes
                                 </a>
                             </li>
@@ -91,7 +91,7 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'sanciones.php' ? 'active' : ''; ?>" href="sanciones.php">
+                                <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Sanciones.php' ? 'active' : ''; ?>" href="Sanciones.php">
                                     <i class="bi bi-exclamation-triangle"></i> Vehiculos Sancionados
                                 </a>
                             </li>
@@ -102,7 +102,7 @@ $usuario_rol = $_SESSION['usuario_rol'] ?? 'desconocido';
                             </li>
                         <?php endif; ?>
                         <li class="nav-item">
-                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'reportes.php' ? 'active' : ''; ?>" href="reportes.php">
+                            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'Reportes.php' ? 'active' : ''; ?>" href="Reportes.php">
                                 <i class="bi bi-bar-chart"></i> Reportes
                             </a>
                         </li>                       

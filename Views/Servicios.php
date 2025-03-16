@@ -42,6 +42,19 @@ unset($_SESSION['mensaje']);
 unset($_SESSION['tipo_mensaje']);
 ?>
 
+<style>
+    .bg-purple {
+        background-color: #6f42c1 !important;
+        color: white;
+    }
+
+    .bg-teal {
+        background-color: #20c997 !important;
+        color: white;
+
+    }
+</style>
+
 <div class="welcome-message">
     <h2>Centro de Control de Servicios</h2>
     <p>Panel para la gestión de solicitudes de servicio y asignación de vehículos.</p>
@@ -131,6 +144,7 @@ unset($_SESSION['tipo_mensaje']);
                         <th>Observaciones</th>
                         <th>Condición</th>
                         <th>Vehículo</th>
+                        <th>Servicio</th>
                         <th>Estado</th>
                         <th>Tiempo</th>
                         <th>Acciones</th>
@@ -151,27 +165,34 @@ unset($_SESSION['tipo_mensaje']);
                                     <?php elseif ($servicio['condicion'] == 'baul'): ?>
                                         <span class="badge bg-primary">Baúl</span>
                                     <?php elseif ($servicio['condicion'] == 'mascota'): ?>
-                                        <span class="badge bg-info">Mascota</span>
+                                        <span class="badge bg-success">Mascota</span>
                                     <?php elseif ($servicio['condicion'] == 'parrilla'): ?>
-                                        <span class="badge bg-danger">Parrilla</span>
+                                        <span class="badge bg-warning text-dark">Parrilla</span>
                                     <?php elseif ($servicio['condicion'] == 'transferencia'): ?>
-                                        <span class="badge bg-primary">Transferencia</span>
+                                        <span class="badge bg-info">Transferencia</span>
                                     <?php elseif ($servicio['condicion'] == 'daviplata'): ?>
-                                        <span class="badge bg-info">Daviplata</span>
+                                        <span class="badge bg-purple">Daviplata</span>
                                     <?php elseif ($servicio['condicion'] == 'polarizados'): ?>
-                                        <span class="badge bg-danger">Polarizados</span>
+                                        <span class="badge bg-dark">Polarizados</span>
                                     <?php elseif ($servicio['condicion'] == 'silla_ruedas'): ?>
-                                        <span class="badge bg-primary">Silla de Ruedas</span>
+                                        <span class="badge bg-teal">Silla de Ruedas</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php
                                     if (!empty($servicio['placa'])) {
-                                        echo $servicio['placa'] . ' - ' . $servicio['numero_movil'];
+                                        echo  $servicio['numero_movil'] . ' - ' . $servicio['placa'];
                                     } else {
                                         echo '-';
                                     }
                                     ?>
+                                </td>
+                                <td>
+                                    <?php if ($servicio['tipo_vehiculo'] == 'unico'): ?>
+                                        <span class="badge bg-danger">Unico</span>
+                                    <?php elseif ($servicio['tipo_vehiculo'] == 'proximo'): ?>
+                                        <span class="badge bg-info">Proximo</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($servicio['estado'] == 'pendiente'): ?>
@@ -263,17 +284,17 @@ unset($_SESSION['tipo_mensaje']);
 
                 <!-- Añadir radio buttons para tipo de vehículo -->
                 <div class="mb-3">
-                    <label class="form-label">Tipo de asignación:</label>
+                    <label class="form-label">Tipo de asignación:</label>                    
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoUnico" value="unico" checked>
-                        <label class="form-check-label" for="nuevoTipoUnico">
-                            <i class="bi bi-car-front"></i> Único
+                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoProximo" value="proximo" checked>
+                        <label class="form-check-label" for="nuevoTipoProximo">
+                            <i class="bi bi-signpost-split"></i> Próximo
                         </label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoProximo" value="proximo">
-                        <label class="form-check-label" for="nuevoTipoProximo">
-                            <i class="bi bi-signpost-split"></i> Próximo
+                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoUnico" value="unico">
+                        <label class="form-check-label" for="nuevoTipoUnico">
+                            <i class="bi bi-car-front"></i> Único
                         </label>
                     </div>
                 </div>
@@ -324,15 +345,15 @@ unset($_SESSION['tipo_mensaje']);
                 <div class="mb-3">
                     <label class="form-label">Tipo de asignación:</label>
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoUnico" value="unico" checked>
-                        <label class="form-check-label" for="tipoUnico">
-                            <i class="bi bi-car-front"></i> Único
+                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoProximo" value="proximo" checked>
+                        <label class="form-check-label" for="tipoProximo">
+                            <i class="bi bi-signpost-split"></i> Próximo
                         </label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoProximo" value="proximo">
-                        <label class="form-check-label" for="tipoProximo">
-                            <i class="bi bi-signpost-split"></i> Próximo
+                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoUnico" value="unico">
+                        <label class="form-check-label" for="tipoUnico">
+                            <i class="bi bi-car-front"></i> Único
                         </label>
                     </div>
                 </div>
@@ -366,15 +387,15 @@ unset($_SESSION['tipo_mensaje']);
         let intervaloActualizacion;
 
         // Función para actualizar la tabla de servicios
-        const actualizarTablaServicios = () => {
+                const actualizarTablaServicios = () => {
             // No actualizar si hay algún modal abierto para evitar interrumpir al usuario
             if (modalEstados.asignarModal || modalEstados.cambiarModal) {
                 return;
             }
-
+        
             // Guardar la posición de scroll actual
             const scrollPos = window.scrollY;
-
+        
             // Solicitar datos actualizados mediante fetch
             fetch('../Processings/obtener_servicios_activos.php')
                 .then(response => {
@@ -388,29 +409,29 @@ unset($_SESSION['tipo_mensaje']);
                         console.error('Error al obtener datos:', data.mensaje);
                         return;
                     }
-
+        
                     // Actualizar contador de servicios
                     document.getElementById('contadorServicios').textContent = data.servicios.length;
-
+        
                     // Obtener la tabla actual
                     const tbody = document.querySelector('#tablaServicios tbody');
-
+        
                     // Si no hay servicios, mostrar mensaje
                     if (data.servicios.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="8" class="text-center">No hay servicios activos</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="9" class="text-center">No hay servicios activos</td></tr>`;
                         return;
                     }
-
+        
                     // Generar HTML para los nuevos datos
                     let htmlServicios = '';
-
+        
                     data.servicios.forEach(servicio => {
                         // Calcular el tiempo transcurrido
                         const tiempoInicio = servicio.estado === 'pendiente' ? servicio.fecha_solicitud : servicio.fecha_asignacion;
                         const ahora = new Date();
                         const fechaInicio = new Date(tiempoInicio);
                         const diffMinutos = Math.floor((ahora - fechaInicio) / 1000 / 60);
-
+        
                         let tiempoFormateado;
                         if (diffMinutos < 60) {
                             tiempoFormateado = diffMinutos + ' min';
@@ -419,35 +440,49 @@ unset($_SESSION['tipo_mensaje']);
                             const minutos = diffMinutos % 60;
                             tiempoFormateado = horas + 'h ' + minutos + 'm';
                         }
-
+        
                         // Generar badge para condición
                         let condicionBadge = '';
                         if (servicio.condicion) {
                             const badgeColor = {
                                 'aire': 'danger',
                                 'baul': 'primary',
-                                'mascota': 'info',
-                                'parrilla': 'danger',
-                                'transferencia': 'primary',
-                                'daviplata': 'info',
-                                'polarizados': 'danger',
-                                'silla_ruedas': 'primary'
-                            } [servicio.condicion] || 'secondary';
-
-                            const condicionText = servicio.condicion.charAt(0).toUpperCase() + servicio.condicion.slice(1).replace('_', ' ');
-                            condicionBadge = `<span class="badge bg-${badgeColor}">${condicionText}</span>`;
+                                'mascota': 'success',
+                                'parrilla': 'warning',
+                                'transferencia': 'info',
+                                'daviplata': 'purple',
+                                'polarizados': 'dark',
+                                'silla_ruedas': 'teal'
+                            }[servicio.condicion] || 'secondary';
+                            
+                            // Añadir text-dark solo para warning para mejor legibilidad
+                            const textClass = badgeColor === 'warning' ? ' text-dark' : '';
+                            
+                            const condicionText = servicio.condicion.charAt(0).toUpperCase() + 
+                                                 servicio.condicion.slice(1).replace('_', ' ');
+                            condicionBadge = `<span class="badge bg-${badgeColor}${textClass}">${condicionText}</span>`;
                         }
-
+        
+                        // Generar badge para tipo de vehículo
+                        let tipoVehiculoBadge = '';
+                        if (servicio.tipo_vehiculo) {
+                            if (servicio.tipo_vehiculo === 'unico') {
+                                tipoVehiculoBadge = '<span class="badge bg-danger">Único</span>';
+                            } else if (servicio.tipo_vehiculo === 'proximo') {
+                                tipoVehiculoBadge = '<span class="badge bg-info">Próximo</span>';
+                            }
+                        }
+        
                         // Generar badge para estado
                         const estadoBadge = {
                             'pendiente': '<span class="badge bg-warning">Pendiente</span>',
                             'asignado': '<span class="badge bg-info">Asignado</span>',
                             'en_camino': '<span class="badge bg-primary">En camino</span>'
-                        } [servicio.estado] || '';
-
+                        }[servicio.estado] || '';
+        
                         // Generar botones de acción según el estado
                         let botonesAccion = '';
-
+        
                         if (servicio.estado === 'pendiente') {
                             botonesAccion += `<button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo" data-id="${servicio.id}">
                             <i class="bi bi-car-front"></i>
@@ -457,18 +492,18 @@ unset($_SESSION['tipo_mensaje']);
                             <i class="bi bi-signpost-2"></i>
                         </button>`;
                         }
-
+        
                         botonesAccion += `<button type="button" class="btn btn-success btn-sm finalizarServicio" title="Finalizar servicio" data-id="${servicio.id}">
                         <i class="bi bi-check-circle"></i>
                     </button>
                     <button type="button" class="btn btn-danger btn-sm cancelarServicio" title="Cancelar servicio" data-id="${servicio.id}">
                         <i class="bi bi-x-circle"></i>
                     </button>`;
-
+        
                         // Información del vehículo
                         const infoVehiculo = servicio.placa ?
-                            `${servicio.placa} - ${servicio.numero_movil}` : '-';
-
+                            `${servicio.numero_movil} - ${servicio.placa}` : '-';
+        
                         // Construir la fila
                         htmlServicios += `<tr>
                         <td>${servicio.telefono}</td>
@@ -476,18 +511,19 @@ unset($_SESSION['tipo_mensaje']);
                         <td>${servicio.observaciones || 'sin observaciones'}</td>
                         <td>${condicionBadge}</td>
                         <td>${infoVehiculo}</td>
+                        <td>${tipoVehiculoBadge}</td>
                         <td>${estadoBadge}</td>
                         <td><span class="tiempoTranscurrido" data-inicio="${tiempoInicio}">${tiempoFormateado}</span></td>
                         <td>${botonesAccion}</td>
                     </tr>`;
                     });
-
+        
                     // Actualizar el contenido de la tabla
                     tbody.innerHTML = htmlServicios;
-
+        
                     // Restaurar la posición de scroll
                     window.scrollTo(0, scrollPos);
-
+        
                     // Volver a añadir event listeners a los nuevos botones
                     agregarEventListeners();
                 })

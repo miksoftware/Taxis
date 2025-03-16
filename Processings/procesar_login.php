@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['success_mensaje'] = 'Inicio de sesión exitoso';
     
     // Redirigir al dashboard
-    header('Location: ../Views/dashboard.php');
+    header('Location: ../Views/Dashboard.php');
     exit;
 } else {
     // Si no se ha enviado el formulario, redirigir al formulario

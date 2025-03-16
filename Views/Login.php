@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Si el usuario ya está autenticado, redirigir al dashboard
 if(isset($_SESSION['autenticado']) && $_SESSION['autenticado'] === true) {
-    header('Location: dashboard.php');
+    header('Location: Dashboard.php');
     exit;
 }
 

@@ -53,13 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['usuario_id'] = $resultado['usuario_id'] ?? 0;
     $_SESSION['usuario_nombre'] = $datos['nombre'] . ' ' . $datos['apellidos'];
     $_SESSION['usuario_rol'] = $datos['rol'];
-    $_SESSION['autenticado'] = true;
+    $_SESSION['autenticado'] = false;
     
     // Mensaje de éxito
     $_SESSION['success_mensaje'] = $resultado['mensaje'];
     
     // Redirigir al dashboard
-    header('Location: ../Views/dashboard.php');
+    header('Location: ../Views/Login.php');
     exit;
 } else {
     // Si no se ha enviado el formulario, redirigir al formulario
