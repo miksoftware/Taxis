@@ -162,229 +162,549 @@ class ReporteController
     }
 
     /**
-     * Genera un reporte de servicios con estadísticas
-     * @param array $filtros Filtros como fecha_inicio, fecha_fin, vehiculo_id, operador_id, estado
+     * Genera un reporte completo de servicios con filtros y paginación opcional
+     * 
+     * @param array $filtros Filtros a aplicar (fecha_inicio, fecha_fin, vehiculo_id, operador_id, estado)
+     * @param int|null $items_por_pagina Cantidad de registros por página
+     * @param int|null $offset Desplazamiento para la paginación
      * @return array Datos del reporte
      */
-    public function generarReporteServicios($filtros = [])
+    public function generarReporteServicios($filtros, $items_por_pagina = null, $offset = null)
+    {
+        // Obtener estadísticas generales
+        $estadisticas = $this->obtenerEstadisticasServicios($filtros);
+
+        // Obtener top vehículos
+        $top_vehiculos = $this->obtenerTopVehiculos($filtros);
+
+        // Obtener top operadores
+        $top_operadores = $this->obtenerTopOperadores($filtros);
+
+        // Obtener tendencia temporal de servicios
+        $tendencia = $this->obtenerTendenciaServicios($filtros);
+
+        // Obtener servicios detallados con paginación opcional
+        $servicios = $this->obtenerServiciosDetallados($filtros, $items_por_pagina, $offset);
+
+        // Contar total de servicios para la paginación
+        $total_servicios = $this->contarServiciosFiltrados($filtros);
+
+        return [
+            'estadisticas' => $estadisticas,
+            'servicios' => $servicios,
+            'top_vehiculos' => $top_vehiculos,
+            'top_operadores' => $top_operadores,
+            'tendencia' => $tendencia,
+            'total_registros' => $total_servicios
+        ];
+    }
+
+    /**
+     * Obtiene estadísticas generales de servicios según los filtros aplicados
+     * 
+     * @param array $filtros Filtros a aplicar
+     * @return array Estadísticas de servicios
+     */
+    private function obtenerEstadisticasServicios($filtros)
     {
         try {
-            // Verificar y configurar fechas
-            $fecha_inicio = isset($filtros['fecha_inicio']) ? $filtros['fecha_inicio'] : date('Y-m-d', strtotime('-30 days'));
-            $fecha_fin = isset($filtros['fecha_fin']) ? $filtros['fecha_fin'] : date('Y-m-d');
-
-            // Inicializar arrays de resultados
-            $estadisticas = [
-                'total' => 0,
-                'finalizados' => 0,
-                'cancelados' => 0,
-                'pendientes' => 0,
-                'asignados' => 0,
-                'en_camino' => 0
-            ];
-
-            // Construir consulta base para estadísticas globales
-            $sql_estadisticas = "
+            $sql = "
             SELECT 
-                COUNT(*) as total,
+                COUNT(*) as total_servicios,
                 SUM(CASE WHEN estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
                 SUM(CASE WHEN estado = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
                 SUM(CASE WHEN estado = 'pendiente' THEN 1 ELSE 0 END) as pendientes,
                 SUM(CASE WHEN estado = 'asignado' THEN 1 ELSE 0 END) as asignados,
-                SUM(CASE WHEN estado = 'en_camino' THEN 1 ELSE 0 END) as en_camino
-            FROM 
-                servicios s
-            WHERE 
-                s.fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin";
+                SUM(CASE WHEN estado = 'en_camino' THEN 1 ELSE 0 END) as en_camino,
+                ROUND(AVG(TIMESTAMPDIFF(MINUTE, fecha_solicitud, fecha_asignacion)), 2) as tiempo_promedio_asignacion,
+                ROUND(AVG(TIMESTAMPDIFF(MINUTE, fecha_asignacion, fecha_fin)), 2) as tiempo_promedio_servicio
+            FROM servicios s
+            WHERE 1=1
+        ";
 
-            // Construir consulta para detalle de servicios
-            $sql_servicios = "
-            SELECT 
-                s.id,
-                s.fecha_solicitud,
-                s.fecha_asignacion,
-                s.fecha_fin,
-                s.direccion,
-                s.referencia,
-                s.estado,
-                s.comentarios,
-                c.telefono as cliente_telefono,
-                c.nombre as cliente_nombre,
-                v.placa,
-                v.numero_movil,
-                v.marca,
-                v.modelo,
-                v.color,
-                u.nombre as operador_nombre
-            FROM 
-                servicios s
-            LEFT JOIN 
-                clientes c ON s.cliente_id = c.id
-            LEFT JOIN 
-                vehiculos v ON s.vehiculo_id = v.id
-            LEFT JOIN 
-                usuarios u ON s.operador_id = u.id
-            WHERE 
-                s.fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin";
+            $params = [];
 
-            // Construir consulta para top vehículos
-            $sql_top_vehiculos = "
+            // Aplicar filtros de fecha
+            if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) BETWEEN :fecha_inicio AND :fecha_fin";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            } else if (!empty($filtros['fecha_inicio'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) >= :fecha_inicio";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+            } else if (!empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) <= :fecha_fin";
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            }
+
+            // Filtro por vehículo
+            if (!empty($filtros['vehiculo_id'])) {
+                $sql .= " AND s.vehiculo_id = :vehiculo_id";
+                $params[':vehiculo_id'] = $filtros['vehiculo_id'];
+            }
+
+            // Filtro por operador
+            if (!empty($filtros['operador_id'])) {
+                $sql .= " AND s.operador_id = :operador_id";
+                $params[':operador_id'] = $filtros['operador_id'];
+            }
+
+            // Filtro por estado
+            if (!empty($filtros['estado'])) {
+                $sql .= " AND s.estado = :estado";
+                $params[':estado'] = $filtros['estado'];
+            }
+
+            $stmt = $this->pdo->prepare($sql);
+
+            // Vincular parámetros
+            foreach ($params as $param => $value) {
+                $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($param, $value, $tipo);
+            }
+
+            $stmt->execute();
+            $estadisticas = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Calcular porcentajes y otras métricas derivadas
+            $total = $estadisticas['total_servicios'] ?? 0;
+
+            if ($total > 0) {
+                $estadisticas['porcentaje_finalizados'] = round(($estadisticas['finalizados'] * 100) / $total, 2);
+                $estadisticas['porcentaje_cancelados'] = round(($estadisticas['cancelados'] * 100) / $total, 2);
+                $estadisticas['efectividad'] = round(($estadisticas['finalizados'] * 100) / ($estadisticas['finalizados'] + $estadisticas['cancelados']), 2);
+            } else {
+                $estadisticas['porcentaje_finalizados'] = 0;
+                $estadisticas['porcentaje_cancelados'] = 0;
+                $estadisticas['efectividad'] = 0;
+            }
+
+            return $estadisticas;
+        } catch (PDOException $e) {
+            error_log('Error al obtener estadísticas de servicios: ' . $e->getMessage());
+            return [
+                'total_servicios' => 0,
+                'finalizados' => 0,
+                'cancelados' => 0,
+                'pendientes' => 0,
+                'asignados' => 0,
+                'en_camino' => 0,
+                'tiempo_promedio_asignacion' => 0,
+                'tiempo_promedio_servicio' => 0,
+                'porcentaje_finalizados' => 0,
+                'porcentaje_cancelados' => 0,
+                'efectividad' => 0
+            ];
+        }
+    }
+
+    /**
+     * Obtiene los vehículos con más servicios según los filtros aplicados
+     * 
+     * @param array $filtros Filtros a aplicar
+     * @param int $limite Número máximo de vehículos a devolver
+     * @return array Lista de vehículos top
+     */
+    private function obtenerTopVehiculos($filtros, $limite = 5)
+    {
+        try {
+            $sql = "
             SELECT 
-                v.id,
-                v.placa,
-                v.numero_movil,
+                v.id, 
+                v.placa, 
+                v.numero_movil, 
+                v.marca, 
+                v.modelo, 
                 COUNT(s.id) as total_servicios,
                 SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
                 SUM(CASE WHEN s.estado = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
                 CASE 
                     WHEN COUNT(s.id) > 0 THEN 
-                        ROUND(SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) * 100.0 / COUNT(s.id), 1)
+                        ROUND((SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) * 100.0) / COUNT(s.id), 2)
                     ELSE 0 
                 END as efectividad
             FROM 
-                servicios s
-            JOIN 
-                vehiculos v ON s.vehiculo_id = v.id
-            WHERE 
-                s.fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin";
+                vehiculos v
+            LEFT JOIN 
+                servicios s ON v.id = s.vehiculo_id
+            WHERE 1=1
+        ";
 
-            // Construir consulta para top operadores
-            $sql_top_operadores = "
+            $params = [];
+
+            // Aplicar filtros de fecha
+            if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) BETWEEN :fecha_inicio AND :fecha_fin";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            } else if (!empty($filtros['fecha_inicio'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) >= :fecha_inicio";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+            } else if (!empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) <= :fecha_fin";
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            }
+
+            // Filtro por vehículo específico
+            if (!empty($filtros['vehiculo_id'])) {
+                $sql .= " AND v.id = :vehiculo_id";
+                $params[':vehiculo_id'] = $filtros['vehiculo_id'];
+            }
+
+            // Filtro por operador
+            if (!empty($filtros['operador_id'])) {
+                $sql .= " AND s.operador_id = :operador_id";
+                $params[':operador_id'] = $filtros['operador_id'];
+            }
+
+            // Filtro por estado
+            if (!empty($filtros['estado'])) {
+                $sql .= " AND s.estado = :estado";
+                $params[':estado'] = $filtros['estado'];
+            }
+
+            $sql .= " GROUP BY v.id, v.placa, v.numero_movil, v.marca, v.modelo";
+            $sql .= " ORDER BY total_servicios DESC";
+            $sql .= " LIMIT :limite";
+
+            $params[':limite'] = $limite;
+
+            $stmt = $this->pdo->prepare($sql);
+
+            // Vincular parámetros
+            foreach ($params as $param => $value) {
+                $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($param, $value, $tipo);
+            }
+
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al obtener top vehículos: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene los operadores con más servicios según los filtros aplicados
+     * 
+     * @param array $filtros Filtros a aplicar
+     * @param int $limite Número máximo de operadores a devolver
+     * @return array Lista de operadores top
+     */
+    private function obtenerTopOperadores($filtros, $limite = 5)
+    {
+        try {
+            $sql = "
             SELECT 
-                u.id,
-                u.nombre,
+                u.id, 
+                u.nombre, 
+                u.username, 
                 COUNT(s.id) as total_servicios,
                 SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
                 SUM(CASE WHEN s.estado = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
                 CASE 
                     WHEN COUNT(s.id) > 0 THEN 
-                        ROUND(SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) * 100.0 / COUNT(s.id), 1)
+                        ROUND((SUM(CASE WHEN s.estado = 'finalizado' THEN 1 ELSE 0 END) * 100.0) / COUNT(s.id), 2)
                     ELSE 0 
                 END as efectividad
             FROM 
-                servicios s
-            JOIN 
-                usuarios u ON s.operador_id = u.id
+                usuarios u
+            LEFT JOIN 
+                servicios s ON u.id = s.operador_id
             WHERE 
-                s.fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin";
+                u.rol = 'operador'
+        ";
 
-            // Consulta para tendencia diaria
-            $sql_tendencia = "
+            $params = [];
+
+            // Aplicar filtros de fecha
+            if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) BETWEEN :fecha_inicio AND :fecha_fin";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            } else if (!empty($filtros['fecha_inicio'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) >= :fecha_inicio";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+            } else if (!empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) <= :fecha_fin";
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            }
+
+            // Filtro por vehículo
+            if (!empty($filtros['vehiculo_id'])) {
+                $sql .= " AND s.vehiculo_id = :vehiculo_id";
+                $params[':vehiculo_id'] = $filtros['vehiculo_id'];
+            }
+
+            // Filtro por operador específico
+            if (!empty($filtros['operador_id'])) {
+                $sql .= " AND u.id = :operador_id";
+                $params[':operador_id'] = $filtros['operador_id'];
+            }
+
+            // Filtro por estado
+            if (!empty($filtros['estado'])) {
+                $sql .= " AND s.estado = :estado";
+                $params[':estado'] = $filtros['estado'];
+            }
+
+            $sql .= " GROUP BY u.id, u.nombre, u.username";
+            $sql .= " ORDER BY total_servicios DESC";
+            $sql .= " LIMIT :limite";
+
+            $params[':limite'] = $limite;
+
+            $stmt = $this->pdo->prepare($sql);
+
+            // Vincular parámetros
+            foreach ($params as $param => $value) {
+                $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($param, $value, $tipo);
+            }
+
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al obtener top operadores: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene la tendencia de servicios agrupados por día según los filtros aplicados
+     * 
+     * @param array $filtros Filtros a aplicar
+     * @param int $limite Número máximo de días a devolver
+     * @return array Datos de tendencia por día
+     */
+    private function obtenerTendenciaServicios($filtros, $limite = 15)
+    {
+        try {
+            $sql = "
             SELECT 
                 DATE(fecha_solicitud) as fecha,
                 COUNT(*) as total,
                 SUM(CASE WHEN estado = 'finalizado' THEN 1 ELSE 0 END) as finalizados,
                 SUM(CASE WHEN estado = 'cancelado' THEN 1 ELSE 0 END) as cancelados
             FROM 
-                servicios
-            WHERE 
-                fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin
+                servicios s
+            WHERE 1=1
         ";
 
-            // Preparar parámetros para consultas
-            $params = [
-                ':fecha_inicio' => $fecha_inicio . ' 00:00:00',
-                ':fecha_fin' => $fecha_fin . ' 23:59:59'
-            ];
+            $params = [];
 
-            // Agregar filtros adicionales si existen
-            $condiciones_adicionales = [];
+            // Aplicar filtros de fecha
+            if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) BETWEEN :fecha_inicio AND :fecha_fin";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            } else if (!empty($filtros['fecha_inicio'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) >= :fecha_inicio";
+                $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+            } else if (!empty($filtros['fecha_fin'])) {
+                $sql .= " AND DATE(s.fecha_solicitud) <= :fecha_fin";
+                $params[':fecha_fin'] = $filtros['fecha_fin'];
+            }
 
+            // Filtro por vehículo
             if (!empty($filtros['vehiculo_id'])) {
-                $condiciones_adicionales[] = "s.vehiculo_id = :vehiculo_id";
+                $sql .= " AND s.vehiculo_id = :vehiculo_id";
                 $params[':vehiculo_id'] = $filtros['vehiculo_id'];
             }
 
+            // Filtro por operador
             if (!empty($filtros['operador_id'])) {
-                $condiciones_adicionales[] = "s.operador_id = :operador_id";
+                $sql .= " AND s.operador_id = :operador_id";
                 $params[':operador_id'] = $filtros['operador_id'];
             }
 
+            // Filtro por estado
             if (!empty($filtros['estado'])) {
-                $condiciones_adicionales[] = "s.estado = :estado";
+                $sql .= " AND s.estado = :estado";
                 $params[':estado'] = $filtros['estado'];
             }
 
-            // Agregar condiciones a las consultas
-            if (!empty($condiciones_adicionales)) {
-                $condiciones_str = " AND " . implode(" AND ", $condiciones_adicionales);
+            $sql .= " GROUP BY DATE(fecha_solicitud)";
+            $sql .= " ORDER BY fecha DESC";
+            $sql .= " LIMIT :limite";
 
-                $sql_estadisticas .= $condiciones_str;
-                $sql_servicios .= $condiciones_str;
-                $sql_top_vehiculos .= $condiciones_str;
-                $sql_top_operadores .= $condiciones_str;
-                $sql_tendencia .= $condiciones_str;
+            $params[':limite'] = $limite;
+
+            $stmt = $this->pdo->prepare($sql);
+
+            // Vincular parámetros
+            foreach ($params as $param => $value) {
+                $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($param, $value, $tipo);
             }
 
-            // Completar las consultas con agrupamiento y ordenación
-            $sql_top_vehiculos .= " GROUP BY v.id, v.placa, v.numero_movil ORDER BY total_servicios DESC LIMIT 10";
-            $sql_top_operadores .= " GROUP BY u.id, u.nombre ORDER BY total_servicios DESC LIMIT 10";
-            $sql_tendencia .= " GROUP BY DATE(fecha_solicitud) ORDER BY fecha";
-            $sql_servicios .= " ORDER BY s.fecha_solicitud DESC";
+            $stmt->execute();
+            $tendencia = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Obtener estadísticas generales
-            $stmt = $this->pdo->prepare($sql_estadisticas);
-            $stmt->execute($params);
-            $estadisticas = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            // Obtener detalle de servicios
-            $stmt = $this->pdo->prepare($sql_servicios);
-            $stmt->execute($params);
-            $servicios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Obtener top vehículos
-            $stmt = $this->pdo->prepare($sql_top_vehiculos);
-            $stmt->execute($params);
-            $top_vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Obtener top operadores
-            $stmt = $this->pdo->prepare($sql_top_operadores);
-            $stmt->execute($params);
-            $top_operadores = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Obtener tendencia
-            $stmt = $this->pdo->prepare($sql_tendencia);
-            $stmt->execute($params);
-            $tendencia_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Transformar tendencia en un formato más conveniente para gráficos
-            $tendencia = [];
-            foreach ($tendencia_raw as $item) {
-                $fecha_formateada = date('d/m/Y', strtotime($item['fecha']));
-                $tendencia[$fecha_formateada] = [
-                    'fecha' => $item['fecha'],
-                    'total' => (int)$item['total'],
-                    'finalizados' => (int)$item['finalizados'],
-                    'cancelados' => (int)$item['cancelados']
-                ];
-            }
-
-            // Preparar y retornar el resultado completo
-            return [
-                'error' => false,
-                'estadisticas' => $estadisticas,
-                'servicios' => $servicios,
-                'top_vehiculos' => $top_vehiculos,
-                'top_operadores' => $top_operadores,
-                'tendencia' => $tendencia,
-                'filtros' => [
-                    'fecha_inicio' => $fecha_inicio,
-                    'fecha_fin' => $fecha_fin,
-                    'vehiculo_id' => $filtros['vehiculo_id'] ?? null,
-                    'operador_id' => $filtros['operador_id'] ?? null,
-                    'estado' => $filtros['estado'] ?? null
-                ]
-            ];
+            // Revertir el orden para que quede cronológico (más antiguo primero)
+            return array_reverse($tendencia);
         } catch (PDOException $e) {
+            error_log('Error al obtener tendencia de servicios: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene la lista detallada de servicios con filtros y paginación
+     * 
+     * @param array $filtros Filtros a aplicar
+     * @param int|null $limite Cantidad máxima de registros a devolver
+     * @param int|null $offset Desplazamiento para la paginación
+     * @return array Lista de servicios
+     */
+    private function obtenerServiciosDetallados($filtros, $limite = null, $offset = null)
+    {
+        // Construir la consulta base
+        $sql = "SELECT s.*, 
+            c.nombre as cliente_nombre, c.telefono as cliente_telefono,
+            d.direccion, d.referencia,
+            v.placa, v.numero_movil, v.marca, v.modelo,
+            u.nombre as operador_nombre,
+            TIMEDIFF(s.fecha_fin, s.fecha_solicitud) as tiempo_total
+            FROM servicios s
+            LEFT JOIN clientes c ON s.cliente_id = c.id
+            LEFT JOIN direcciones d ON s.direccion_id = d.id
+            LEFT JOIN vehiculos v ON s.vehiculo_id = v.id
+            LEFT JOIN usuarios u ON s.operador_id = u.id
+            WHERE 1=1";
+
+        // Parámetros para la consulta
+        $params = [];
+
+        // Aplicar filtros de fecha
+        if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) BETWEEN :fecha_inicio AND :fecha_fin";
+            $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+            $params[':fecha_fin'] = $filtros['fecha_fin'];
+        } else if (!empty($filtros['fecha_inicio'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) >= :fecha_inicio";
+            $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+        } else if (!empty($filtros['fecha_fin'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) <= :fecha_fin";
+            $params[':fecha_fin'] = $filtros['fecha_fin'];
+        }
+
+        // Filtro por vehículo
+        if (!empty($filtros['vehiculo_id'])) {
+            $sql .= " AND s.vehiculo_id = :vehiculo_id";
+            $params[':vehiculo_id'] = $filtros['vehiculo_id'];
+        }
+
+        // Filtro por operador
+        if (!empty($filtros['operador_id'])) {
+            $sql .= " AND s.operador_id = :operador_id";
+            $params[':operador_id'] = $filtros['operador_id'];
+        }
+
+        // Filtro por estado
+        if (!empty($filtros['estado'])) {
+            $sql .= " AND s.estado = :estado";
+            $params[':estado'] = $filtros['estado'];
+        }
+
+        // Ordenar resultados (más recientes primero)
+        $sql .= " ORDER BY s.fecha_solicitud DESC";
+
+        // Aplicar paginación si se especifica
+        if ($limite !== null && $offset !== null) {
+            $sql .= " LIMIT :offset, :limite";
+            $params[':limite'] = (int)$limite;
+            $params[':offset'] = (int)$offset;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+
+            // Vincular parámetros
+            foreach ($params as $param => $value) {
+                // Determinar el tipo de parámetro
+                $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($param, $value, $tipo);
+            }
+
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al obtener detalle de servicios: ' . $e->getMessage());
             return [
                 'error' => true,
-                'mensaje' => 'Error al generar reporte de servicios: ' . $e->getMessage(),
-                'estadisticas' => [],
-                'servicios' => [],
-                'top_vehiculos' => [],
-                'top_operadores' => [],
-                'tendencia' => []
+                'mensaje' => 'Error al obtener servicios: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Cuenta el total de servicios que coinciden con los filtros aplicados
+     * 
+     * @param array $filtros Filtros a aplicar
+     * @return int Total de registros
+     */
+    private function contarServiciosFiltrados($filtros)
+    {
+        $sql = "SELECT COUNT(*) as total FROM servicios s
+            LEFT JOIN clientes c ON s.cliente_id = c.id
+            LEFT JOIN direcciones d ON s.direccion_id = d.id
+            LEFT JOIN vehiculos v ON s.vehiculo_id = v.id
+            LEFT JOIN usuarios u ON s.operador_id = u.id
+            WHERE 1=1";
+
+        // Parámetros para la consulta
+        $params = [];
+
+        // Aplicar los mismos filtros que en obtenerServiciosDetallados
+        // Filtros de fecha
+        if (!empty($filtros['fecha_inicio']) && !empty($filtros['fecha_fin'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) BETWEEN :fecha_inicio AND :fecha_fin";
+            $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+            $params[':fecha_fin'] = $filtros['fecha_fin'];
+        } else if (!empty($filtros['fecha_inicio'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) >= :fecha_inicio";
+            $params[':fecha_inicio'] = $filtros['fecha_inicio'];
+        } else if (!empty($filtros['fecha_fin'])) {
+            $sql .= " AND DATE(s.fecha_solicitud) <= :fecha_fin";
+            $params[':fecha_fin'] = $filtros['fecha_fin'];
+        }
+
+        // Filtro por vehículo
+        if (!empty($filtros['vehiculo_id'])) {
+            $sql .= " AND s.vehiculo_id = :vehiculo_id";
+            $params[':vehiculo_id'] = $filtros['vehiculo_id'];
+        }
+
+        // Filtro por operador
+        if (!empty($filtros['operador_id'])) {
+            $sql .= " AND s.operador_id = :operador_id";
+            $params[':operador_id'] = $filtros['operador_id'];
+        }
+
+        // Filtro por estado
+        if (!empty($filtros['estado'])) {
+            $sql .= " AND s.estado = :estado";
+            $params[':estado'] = $filtros['estado'];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+
+            // Vincular parámetros
+            foreach ($params as $param => $value) {
+                // Determinar el tipo de parámetro
+                $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($param, $value, $tipo);
+            }
+
+            $stmt->execute();
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $resultado['total'] ?? 0;
+        } catch (PDOException $e) {
+            error_log('Error al contar servicios filtrados: ' . $e->getMessage());
+            return 0;
         }
     }
 

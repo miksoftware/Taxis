@@ -215,6 +215,11 @@ unset($_SESSION['tipo_mensaje']);
                                     <?php endif; ?>
                                 </td>
                                 <td>
+                                    <button type="button" class="btn btn-warning btn-sm editarDireccion" title="Editar dirección"
+                                        data-id="<?= $servicio['id'] ?>" data-direccion="<?= htmlspecialchars($servicio['direccion']) ?>"
+                                        data-direccion-id="<?= $servicio['direccion_id'] ?>">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
                                     <?php if ($servicio['estado'] == 'pendiente'): ?>
                                         <button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo"
                                             data-id="<?= $servicio['id'] ?>">
@@ -284,7 +289,7 @@ unset($_SESSION['tipo_mensaje']);
 
                 <!-- Añadir radio buttons para tipo de vehículo -->
                 <div class="mb-3">
-                    <label class="form-label">Tipo de asignación:</label>                    
+                    <label class="form-label">Tipo de asignación:</label>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoProximo" value="proximo" checked>
                         <label class="form-check-label" for="nuevoTipoProximo">
@@ -370,6 +375,37 @@ unset($_SESSION['tipo_mensaje']);
     </div>
 </div>
 
+
+
+<!-- Modal para editar dirección -->
+<div class="modal fade" id="editarDireccionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-geo-alt me-2"></i> Editar Dirección
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editarServicioId">
+                <input type="hidden" id="editarDireccionId">
+                <div class="mb-3">
+                    <label for="editarDireccionTexto" class="form-label">Dirección:</label>
+                    <input type="text" class="form-control" id="editarDireccionTexto" placeholder="Ingrese la nueva dirección">
+                </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> La dirección se actualizará para este servicio.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="confirmarEditarDireccion" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Script para la funcionalidad de servicios -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -386,8 +422,8 @@ unset($_SESSION['tipo_mensaje']);
         // Variable para guardar el ID del intervalo
         let intervaloActualizacion;
 
-        // Función para actualizar la tabla de servicios
-                const actualizarTablaServicios = () => {
+              // Función para actualizar la tabla de servicios
+        const actualizarTablaServicios = () => {
             // No actualizar si hay algún modal abierto para evitar interrumpir al usuario
             if (modalEstados.asignarModal || modalEstados.cambiarModal) {
                 return;
@@ -453,13 +489,13 @@ unset($_SESSION['tipo_mensaje']);
                                 'daviplata': 'purple',
                                 'polarizados': 'dark',
                                 'silla_ruedas': 'teal'
-                            }[servicio.condicion] || 'secondary';
-                            
+                            } [servicio.condicion] || 'secondary';
+        
                             // Añadir text-dark solo para warning para mejor legibilidad
                             const textClass = badgeColor === 'warning' ? ' text-dark' : '';
-                            
-                            const condicionText = servicio.condicion.charAt(0).toUpperCase() + 
-                                                 servicio.condicion.slice(1).replace('_', ' ');
+        
+                            const condicionText = servicio.condicion.charAt(0).toUpperCase() +
+                                servicio.condicion.slice(1).replace('_', ' ');
                             condicionBadge = `<span class="badge bg-${badgeColor}${textClass}">${condicionText}</span>`;
                         }
         
@@ -478,27 +514,38 @@ unset($_SESSION['tipo_mensaje']);
                             'pendiente': '<span class="badge bg-warning">Pendiente</span>',
                             'asignado': '<span class="badge bg-info">Asignado</span>',
                             'en_camino': '<span class="badge bg-primary">En camino</span>'
-                        }[servicio.estado] || '';
+                        } [servicio.estado] || '';
         
                         // Generar botones de acción según el estado
                         let botonesAccion = '';
-        
+                        
+                        // Añadir botón para editar dirección (disponible para todos los estados)
+                        botonesAccion += `<button type="button" class="btn btn-warning btn-sm editarDireccion" 
+                            title="Editar dirección" 
+                            data-id="${servicio.id}" 
+                            data-direccion="${servicio.direccion ? servicio.direccion.replace(/"/g, '&quot;') : ''}"
+                            data-direccion-id="${servicio.direccion_id}">
+                            <i class="bi bi-geo-alt"></i>
+                        </button>`;
+                        
+                        // Botones específicos según el estado
                         if (servicio.estado === 'pendiente') {
                             botonesAccion += `<button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo" data-id="${servicio.id}">
-                            <i class="bi bi-car-front"></i>
-                        </button>`;
+                                <i class="bi bi-car-front"></i>
+                            </button>`;
                         } else if (servicio.estado === 'asignado') {
                             botonesAccion += `<button type="button" class="btn btn-info btn-sm cambiarMovil" title="Cambiar movil asignado" data-id="${servicio.id}">
-                            <i class="bi bi-signpost-2"></i>
-                        </button>`;
+                                <i class="bi bi-signpost-2"></i>
+                            </button>`;
                         }
         
+                        // Botones de finalizar y cancelar (disponibles para todos los estados)
                         botonesAccion += `<button type="button" class="btn btn-success btn-sm finalizarServicio" title="Finalizar servicio" data-id="${servicio.id}">
-                        <i class="bi bi-check-circle"></i>
-                    </button>
-                    <button type="button" class="btn btn-danger btn-sm cancelarServicio" title="Cancelar servicio" data-id="${servicio.id}">
-                        <i class="bi bi-x-circle"></i>
-                    </button>`;
+                            <i class="bi bi-check-circle"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm cancelarServicio" title="Cancelar servicio" data-id="${servicio.id}">
+                            <i class="bi bi-x-circle"></i>
+                        </button>`;
         
                         // Información del vehículo
                         const infoVehiculo = servicio.placa ?
@@ -531,9 +578,26 @@ unset($_SESSION['tipo_mensaje']);
                     console.error('Error al actualizar tabla:', error);
                 });
         };
-
         // Función para agregar event listeners a los botones de acción
         function agregarEventListeners() {
+
+            document.querySelectorAll('.editarDireccion').forEach(button => {
+                button.addEventListener('click', function() {
+                    const servicioId = this.getAttribute('data-id');
+                    const direccionId = this.getAttribute('data-direccion-id');
+                    const direccionTexto = this.getAttribute('data-direccion');
+
+                    document.getElementById('editarServicioId').value = servicioId;
+                    document.getElementById('editarDireccionId').value = direccionId;
+                    document.getElementById('editarDireccionTexto').value = direccionTexto;
+
+                    // Mostrar modal
+                    new bootstrap.Modal(document.getElementById('editarDireccionModal')).show();
+                });
+            });
+
+
+
             document.querySelectorAll('.asignarServicio').forEach(button => {
                 button.addEventListener('click', function() {
                     const servicioId = this.getAttribute('data-id');
@@ -879,6 +943,65 @@ unset($_SESSION['tipo_mensaje']);
             clienteActual = null;
             direccionSeleccionada = null;
         }
+
+        // Confirmar edición de dirección
+        document.getElementById('confirmarEditarDireccion').addEventListener('click', function() {
+            const servicioId = document.getElementById('editarServicioId').value;
+            const direccionId = document.getElementById('editarDireccionId').value;
+            const nuevaDireccion = document.getElementById('editarDireccionTexto').value.trim();
+
+            if (!nuevaDireccion) {
+                alert('Por favor, ingrese una dirección válida');
+                return;
+            }
+
+            // Mostrar indicador de carga
+            const btnConfirmar = this;
+            const textoOriginal = btnConfirmar.innerHTML;
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<i class="bi bi-hourglass-split"></i> Procesando...';
+
+            const formData = new FormData();
+            formData.append('servicio_id', servicioId);
+            formData.append('direccion_id', direccionId);
+            formData.append('nueva_direccion', nuevaDireccion);
+            formData.append('accion', 'editar_direccion');
+
+            fetch('../Processings/procesar_direccion.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error de red: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Restaurar botón
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.innerHTML = textoOriginal;
+
+                    if (data.error) {
+                        alert('Error: ' + data.mensaje);
+                    } else {
+                        bootstrap.Modal.getInstance(document.getElementById('editarDireccionModal')).hide();
+                        alert('Dirección actualizada correctamente');
+                        // Actualizar la tabla
+                        actualizarTablaServicios();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+
+                    // Restaurar botón
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.innerHTML = textoOriginal;
+
+                    alert('Error al actualizar la dirección: ' + error.message);
+                });
+        });
+
 
         // Confirmar asignación de vehículo
         document.getElementById('confirmarAsignacion').addEventListener('click', function() {

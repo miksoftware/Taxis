@@ -146,6 +146,29 @@ class ServicioController
 
 
     /**
+     * Actualiza la dirección de un servicio
+     * 
+     * @param int $servicioId ID del servicio
+     * @param int $direccionId ID de la dirección
+     * @return bool Resultado de la operación
+     */
+    public function actualizarDireccion($servicioId, $direccionId)
+    {
+        try {
+            $query = "UPDATE servicios SET direccion_id = :direccion_id WHERE id = :servicio_id";
+
+            $stmt = $this->pdo->prepare($query);
+            $stmt->bindParam(':direccion_id', $direccionId, PDO::PARAM_INT);
+            $stmt->bindParam(':servicio_id', $servicioId, PDO::PARAM_INT);
+
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log('Error al actualizar dirección en servicio: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Cambia el vehículo asignado a un servicio
      */
     public function cambiarVehiculo($servicio_id, $nuevo_vehiculo_id, $tipo_vehiculo = 'unico')

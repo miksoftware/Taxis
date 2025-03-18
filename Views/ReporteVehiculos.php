@@ -27,6 +27,7 @@ $usuarioController = new UsuarioController($pdo);
 
 // Obtener listas para filtros
 $vehiculos = $vehiculoController->listar();
+$operadores = $usuarioController->listar();
 // Incluir header
 include 'Layouts/header.php';
 
@@ -49,24 +50,56 @@ $filtros = [
     'estado' => $estado
 ];
 
+$pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+$items_por_pagina = 15;  // Puedes ajustar este número según tus necesidades
+$offset = ($pagina_actual - 1) * $items_por_pagina;
+
 // Generar reporte
-$reporte = $reporteController->generarReporteServicios($filtros);
-$estadisticas = $reporte['estadisticas'] ?? [];
-$detalle_servicios = $reporte['servicios'] ?? [];
-$top_vehiculos = $reporte['top_vehiculos'] ?? [];
-$top_operadores = $reporte['top_operadores'] ?? [];
+$reporte = $reporteController->generarReporteServicios($filtros, $items_por_pagina, $offset);
+
+// Solo para depuración
+/*
+echo '<pre>';
+echo 'Estructura de $reporte: ';
+print_r($reporte);
+echo '</pre>';
+exit;
+*/
+
+if (isset($reporte['error']) && $reporte['error']) {
+    echo '<div class="alert alert-danger">';
+    echo '<strong>Error:</strong> ' . $reporte['mensaje'];
+    echo '</div>';
+}
+
+// Validación y normalización de datos
+$estadisticas = is_array($reporte['estadisticas'] ?? null) ? $reporte['estadisticas'] : [
+    'total_servicios' => 0,
+    'finalizados' => 0,
+    'cancelados' => 0,
+    'pendientes' => 0,
+    'asignados' => 0,
+    'en_camino' => 0
+];
+
+$detalle_servicios = is_array($reporte['servicios'] ?? null) ? $reporte['servicios'] : [];
+$top_vehiculos = is_array($reporte['top_vehiculos'] ?? null) ? $reporte['top_vehiculos'] : [];
+$top_operadores = is_array($reporte['top_operadores'] ?? null) ? $reporte['top_operadores'] : [];
+$total_servicios = isset($reporte['total_registros']) ? intval($reporte['total_registros']) : 0;
+$total_paginas = ceil($total_servicios / $items_por_pagina);
+
 
 // Función para formatear tiempo
 function formatearTiempo($minutos)
 {
     if ($minutos === null || $minutos == 0) return '0 min';
-    
+
     $minutos = intval($minutos);
     if ($minutos < 60) return $minutos . ' min';
-    
+
     $horas = floor($minutos / 60);
     $min = $minutos % 60;
-    
+
     return $horas . 'h ' . ($min > 0 ? $min . 'min' : '');
 }
 ?>
@@ -100,7 +133,7 @@ function formatearTiempo($minutos)
                         <label for="vehiculo_id">Vehículo</label>
                         <select class="form-control" id="vehiculo_id" name="vehiculo_id">
                             <option value="">Todos</option>
-                            <?php foreach ($vehiculos as $v): 
+                            <?php foreach ($vehiculos as $v):
                                 if (isset($v['error'])) continue; ?>
                                 <option value="<?= $v['id'] ?>" <?= $vehiculo_id == $v['id'] ? 'selected' : '' ?>>
                                     <?= $v['numero_movil'] ?> - <?= $v['placa'] ?>
@@ -112,7 +145,7 @@ function formatearTiempo($minutos)
                         <label for="operador_id">Operador</label>
                         <select class="form-control" id="operador_id" name="operador_id">
                             <option value="">Todos</option>
-                            <?php foreach ($operadores as $op): 
+                            <?php foreach ($operadores as $op):
                                 if (isset($op['error'])) continue; ?>
                                 <option value="<?= $op['id'] ?>" <?= $operador_id == $op['id'] ? 'selected' : '' ?>>
                                     <?= $op['nombre'] ?>
@@ -157,7 +190,7 @@ function formatearTiempo($minutos)
                                 <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                     Servicios Totales
                                 </div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $estadisticas['total'] ?? 0 ?></div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $estadisticas['total_servicios'] ?? 0 ?></div>
                             </div>
                             <div class="col-auto">
                                 <i class="bi bi-card-list fa-2x text-gray-300"></i>
@@ -212,8 +245,8 @@ function formatearTiempo($minutos)
                                     Efectividad
                                 </div>
                                 <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                    <?= isset($estadisticas['total']) && $estadisticas['total'] > 0 
-                                        ? round(($estadisticas['finalizados'] * 100) / $estadisticas['total'], 1) . '%'
+                                    <?= isset($estadisticas['total_servicios']) && $estadisticas['total_servicios'] > 0
+                                        ? round(($estadisticas['finalizados'] * 100) / $estadisticas['total_servicios'], 1) . '%'
                                         : '0%' ?>
                                 </div>
                             </div>
@@ -298,9 +331,9 @@ function formatearTiempo($minutos)
                                                 <td>
                                                     <?= $vehiculo['efectividad'] ?>%
                                                     <div class="progress progress-sm">
-                                                        <div class="progress-bar bg-success" role="progressbar" 
-                                                            style="width: <?= $vehiculo['efectividad'] ?>%" 
-                                                            aria-valuenow="<?= $vehiculo['efectividad'] ?>" 
+                                                        <div class="progress-bar bg-success" role="progressbar"
+                                                            style="width: <?= $vehiculo['efectividad'] ?>%"
+                                                            aria-valuenow="<?= $vehiculo['efectividad'] ?>"
                                                             aria-valuemin="0" aria-valuemax="100"></div>
                                                     </div>
                                                 </td>
@@ -347,9 +380,9 @@ function formatearTiempo($minutos)
                                                 <td>
                                                     <?= $operador['efectividad'] ?>%
                                                     <div class="progress progress-sm">
-                                                        <div class="progress-bar bg-success" role="progressbar" 
-                                                            style="width: <?= $operador['efectividad'] ?>%" 
-                                                            aria-valuenow="<?= $operador['efectividad'] ?>" 
+                                                        <div class="progress-bar bg-success" role="progressbar"
+                                                            style="width: <?= $operador['efectividad'] ?>%"
+                                                            aria-valuenow="<?= $operador['efectividad'] ?>"
                                                             aria-valuemin="0" aria-valuemax="100"></div>
                                                     </div>
                                                 </td>
@@ -374,7 +407,7 @@ function formatearTiempo($minutos)
                 <h6 class="m-0 font-weight-bold text-primary">Detalle de Servicios</h6>
                 <div>
                     <span id="totalRegistros">
-                        <?= count($detalle_servicios) ?> registros encontrados
+                        <?= $total_servicios ?> registros encontrados (Página <?= $pagina_actual ?> de <?= $total_paginas ?>)
                     </span>
                 </div>
             </div>
@@ -412,17 +445,27 @@ function formatearTiempo($minutos)
                                             <?php
                                             $badge_class = 'bg-secondary';
                                             switch ($servicio['estado']) {
-                                                case 'pendiente': $badge_class = 'bg-warning'; break;
-                                                case 'asignado': $badge_class = 'bg-primary'; break;
-                                                case 'en_camino': $badge_class = 'bg-info'; break;
-                                                case 'finalizado': $badge_class = 'bg-success'; break;
-                                                case 'cancelado': $badge_class = 'bg-danger'; break;
+                                                case 'pendiente':
+                                                    $badge_class = 'bg-warning';
+                                                    break;
+                                                case 'asignado':
+                                                    $badge_class = 'bg-primary';
+                                                    break;
+                                                case 'en_camino':
+                                                    $badge_class = 'bg-info';
+                                                    break;
+                                                case 'finalizado':
+                                                    $badge_class = 'bg-success';
+                                                    break;
+                                                case 'cancelado':
+                                                    $badge_class = 'bg-danger';
+                                                    break;
                                             }
                                             ?>
                                             <span class="badge <?= $badge_class ?>"><?= ucfirst($servicio['estado']) ?></span>
                                         </td>
                                         <td>
-                                            <?php 
+                                            <?php
                                             if (!empty($servicio['fecha_fin']) && !empty($servicio['fecha_solicitud'])) {
                                                 $inicio = new DateTime($servicio['fecha_solicitud']);
                                                 $fin = new DateTime($servicio['fecha_fin']);
@@ -449,6 +492,91 @@ function formatearTiempo($minutos)
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Controles de Paginación -->
+                <?php if ($hayFiltros && $total_paginas > 1): ?>
+                    <div class="mt-4">
+                        <nav aria-label="Navegación de páginas">
+                            <ul class="pagination justify-content-center">
+                                <!-- Botón Anterior -->
+                                <?php if ($pagina_actual > 1): ?>
+                                    <li class="page-item">
+                                        <?php
+                                        $params = $_GET;
+                                        $params['pagina'] = $pagina_actual - 1;
+                                        $query_string = http_build_query($params);
+                                        ?>
+                                        <a class="page-link" href="?<?= $query_string ?>" aria-label="Anterior">
+                                            <span aria-hidden="true">&laquo;</span> Anterior
+                                        </a>
+                                    </li>
+                                <?php else: ?>
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><span aria-hidden="true">&laquo;</span> Anterior</span>
+                                    </li>
+                                <?php endif; ?>
+
+                                <!-- Números de página -->
+                                <?php
+                                // Determinar el rango de páginas a mostrar
+                                $rango = 2; // Mostrar 2 páginas antes y después de la actual
+                                $inicio_rango = max(1, $pagina_actual - $rango);
+                                $fin_rango = min($total_paginas, $pagina_actual + $rango);
+
+                                // Mostrar primera página si no está en el rango
+                                if ($inicio_rango > 1) {
+                                    $params = $_GET;
+                                    $params['pagina'] = 1;
+                                    echo '<li class="page-item"><a class="page-link" href="?' . http_build_query($params) . '">1</a></li>';
+                                    if ($inicio_rango > 2) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                }
+
+                                // Mostrar páginas del rango
+                                for ($i = $inicio_rango; $i <= $fin_rango; $i++) {
+                                    $params = $_GET;
+                                    $params['pagina'] = $i;
+                                    $active = ($i == $pagina_actual) ? 'active' : '';
+                                    echo '<li class="page-item ' . $active . '"><a class="page-link" href="?' . http_build_query($params) . '">' . $i . '</a></li>';
+                                }
+
+                                // Mostrar última página si no está en el rango
+                                if ($fin_rango < $total_paginas) {
+                                    if ($fin_rango < $total_paginas - 1) {
+                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                    }
+                                    $params = $_GET;
+                                    $params['pagina'] = $total_paginas;
+                                    echo '<li class="page-item"><a class="page-link" href="?' . http_build_query($params) . '">' . $total_paginas . '</a></li>';
+                                }
+                                ?>
+
+                                <!-- Botón Siguiente -->
+                                <?php if ($pagina_actual < $total_paginas): ?>
+                                    <li class="page-item">
+                                        <?php
+                                        $params = $_GET;
+                                        $params['pagina'] = $pagina_actual + 1;
+                                        $query_string = http_build_query($params);
+                                        ?>
+                                        <a class="page-link" href="?<?= $query_string ?>" aria-label="Siguiente">
+                                            Siguiente <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
+                                <?php else: ?>
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Siguiente <span aria-hidden="true">&raquo;</span></span>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </nav>
+
+                        <div class="text-center text-muted small">
+                            Mostrando registros <?= ($offset + 1) ?> al <?= min($offset + $items_por_pagina, $total_servicios) ?> de un total de <?= $total_servicios ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     <?php else: ?>
@@ -492,7 +620,7 @@ function formatearTiempo($minutos)
         let graficoTopVehiculos;
 
         // Inicializar gráficos si hay datos
-        <?php if ($hayFiltros && isset($estadisticas['total']) && $estadisticas['total'] > 0): ?>
+        <?php if ($hayFiltros && isset($estadisticas['total_servicios']) && $estadisticas['total_servicios'] > 0): ?>
             inicializarGraficos();
         <?php endif; ?>
 
@@ -509,7 +637,14 @@ function formatearTiempo($minutos)
                 formFiltros.reset();
                 document.getElementById('fecha_inicio').value = '<?= date('Y-m-d', strtotime('-30 days')); ?>';
                 document.getElementById('fecha_fin').value = '<?= date('Y-m-d'); ?>';
-                aplicarFiltros();
+
+                // Mantener solo fecha_inicio y fecha_fin, eliminar otros filtros
+                const urlParams = new URLSearchParams();
+                urlParams.append('fecha_inicio', document.getElementById('fecha_inicio').value);
+                urlParams.append('fecha_fin', document.getElementById('fecha_fin').value);
+
+                // Eliminar la paginación para volver a la primera página con los filtros básicos
+                window.location.href = 'ReporteVehiculos.php?' + urlParams.toString();
             });
         }
 
@@ -546,6 +681,10 @@ function formatearTiempo($minutos)
         // Función para aplicar filtros
         function aplicarFiltros() {
             const formData = new FormData(formFiltros);
+
+            // Eliminar el parámetro de página para reiniciar en página 1 con nuevos filtros
+            formData.delete('pagina');
+
             const queryParams = new URLSearchParams(formData).toString();
             window.location.href = 'ReporteVehiculos.php?' + queryParams;
         }
@@ -555,10 +694,11 @@ function formatearTiempo($minutos)
             // Gráfico de estado de servicios (pastel)
             const ctxEstados = document.getElementById('graficoEstadoServicios').getContext('2d');
             const datosEstados = {
-                finalizados: <?= $estadisticas['finalizados'] ?? 0 ?>,
-                cancelados: <?= $estadisticas['cancelados'] ?? 0 ?>,
-                pendientes: <?= $estadisticas['pendientes'] ?? 0 ?>,
-                en_curso: <?= ($estadisticas['asignados'] ?? 0) + ($estadisticas['en_camino'] ?? 0) ?>
+                finalizados: <?= isset($estadisticas['finalizados']) ? (int)$estadisticas['finalizados'] : 0 ?>,
+                cancelados: <?= isset($estadisticas['cancelados']) ? (int)$estadisticas['cancelados'] : 0 ?>,
+                pendientes: <?= isset($estadisticas['pendientes']) ? (int)$estadisticas['pendientes'] : 0 ?>,
+                en_curso: <?= (isset($estadisticas['asignados']) ? (int)$estadisticas['asignados'] : 0) +
+                                (isset($estadisticas['en_camino']) ? (int)$estadisticas['en_camino'] : 0) ?>
             };
 
             graficoEstadoServicios = new Chart(ctxEstados, {
@@ -598,25 +738,58 @@ function formatearTiempo($minutos)
             });
 
             // Gráfico de tendencia (línea o barras)
-            <?php 
+            <?php
             // Preparar datos para el gráfico de tendencia
             $fechas = [];
             $totales = [];
             $finalizados = [];
             $cancelados = [];
-            
+
+            // Verificación robusta y conversión de datos
             if (isset($reporte['tendencia']) && !empty($reporte['tendencia'])) {
-                foreach ($reporte['tendencia'] as $fecha => $datos) {
-                    $fechas[] = $fecha;
-                    $totales[] = $datos['total'];
-                    $finalizados[] = $datos['finalizados'];
-                    $cancelados[] = $datos['cancelados'];
+                foreach ($reporte['tendencia'] as $item) {
+                    try {
+                        // Si es un objeto o array asociativo con claves específicas
+                        if (is_array($item) && isset($item['fecha'])) {
+                            $fechas[] = date('d/m/Y', strtotime($item['fecha']));
+                            $totales[] = (int)($item['total_servicios'] ?? 0);
+                            $finalizados[] = (int)($item['finalizados'] ?? 0);
+                            $cancelados[] = (int)($item['cancelados'] ?? 0);
+                        }
+                        // Si es un array indexado (numérico)
+                        else if (is_array($item) && isset($item[0])) {
+                            $fechas[] = date('d/m/Y', strtotime($item[0]));
+                            $totales[] = (int)($item[1] ?? 0);
+                            $finalizados[] = (int)($item[2] ?? 0);
+                            $cancelados[] = (int)($item[3] ?? 0);
+                        }
+                        // Si la estructura es completamente diferente, intentaremos extraer información útil
+                        else if (is_scalar($item) && is_string($item)) {
+                            // Podría ser una fecha como string
+                            $fechas[] = date('d/m/Y', strtotime($item));
+                            $totales[] = 0;
+                            $finalizados[] = 0;
+                            $cancelados[] = 0;
+                        }
+                        // Ignoramos otros casos
+                    } catch (Exception $e) {
+                        // Simplemente ignoramos entradas erróneas
+                        error_log("Error procesando datos de tendencia: " . $e->getMessage());
+                    }
                 }
             }
+
+            // Asegurarnos de que hay datos para el gráfico
+            if (empty($fechas)) {
+                $fechas = [date('d/m/Y')];
+                $totales = [0];
+                $finalizados = [0];
+                $cancelados = [0];
+            }
             ?>
-            
+
             const ctxTendencia = document.getElementById('graficoTendenciaServicios').getContext('2d');
-            
+
             const fechasTendencia = <?= json_encode($fechas) ?>;
             const totalesTendencia = <?= json_encode($totales) ?>;
             const finalizadosTendencia = <?= json_encode($finalizados) ?>;
@@ -626,8 +799,7 @@ function formatearTiempo($minutos)
                 type: 'line',
                 data: {
                     labels: fechasTendencia,
-                    datasets: [
-                        {
+                    datasets: [{
                             label: 'Total',
                             data: totalesTendencia,
                             backgroundColor: 'rgba(78, 115, 223, 0.05)',
@@ -685,59 +857,58 @@ function formatearTiempo($minutos)
 
             // Gráfico de top vehículos (barras horizontales)
             <?php if (!empty($top_vehiculos) && count($top_vehiculos) > 0): ?>
-            const ctxTopVehiculos = document.getElementById('graficoTopVehiculos')?.getContext('2d');
-            
-            if (ctxTopVehiculos) {
-                const vehiculosLabels = <?= json_encode(array_map(fn($v) => $v['numero_movil'] . ' - ' . $v['placa'], array_slice($top_vehiculos, 0, 5))) ?>;
-                const vehiculosFinalizados = <?= json_encode(array_map(fn($v) => $v['finalizados'], array_slice($top_vehiculos, 0, 5))) ?>;
-                const vehiculosCancelados = <?= json_encode(array_map(fn($v) => $v['cancelados'], array_slice($top_vehiculos, 0, 5))) ?>;
+                const ctxTopVehiculos = document.getElementById('graficoTopVehiculos')?.getContext('2d');
 
-                graficoTopVehiculos = new Chart(ctxTopVehiculos, {
-                    type: 'bar',
-                    data: {
-                        labels: vehiculosLabels,
-                        datasets: [
-                            {
-                                label: 'Finalizados',
-                                data: vehiculosFinalizados,
-                                backgroundColor: 'rgba(28, 200, 138, 0.7)',
-                                borderColor: 'rgba(28, 200, 138, 1)',
-                                borderWidth: 1
-                            },
-                            {
-                                label: 'Cancelados',
-                                data: vehiculosCancelados,
-                                backgroundColor: 'rgba(231, 74, 59, 0.7)',
-                                borderColor: 'rgba(231, 74, 59, 1)',
-                                borderWidth: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                stacked: false,
-                                ticks: {
-                                    precision: 0
+                if (ctxTopVehiculos) {
+                    const vehiculosLabels = <?= json_encode(array_map(fn($v) => $v['numero_movil'] . ' - ' . $v['placa'], array_slice($top_vehiculos, 0, 5))) ?>;
+                    const vehiculosFinalizados = <?= json_encode(array_map(fn($v) => $v['finalizados'], array_slice($top_vehiculos, 0, 5))) ?>;
+                    const vehiculosCancelados = <?= json_encode(array_map(fn($v) => $v['cancelados'], array_slice($top_vehiculos, 0, 5))) ?>;
+
+                    graficoTopVehiculos = new Chart(ctxTopVehiculos, {
+                        type: 'bar',
+                        data: {
+                            labels: vehiculosLabels,
+                            datasets: [{
+                                    label: 'Finalizados',
+                                    data: vehiculosFinalizados,
+                                    backgroundColor: 'rgba(28, 200, 138, 0.7)',
+                                    borderColor: 'rgba(28, 200, 138, 1)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: 'Cancelados',
+                                    data: vehiculosCancelados,
+                                    backgroundColor: 'rgba(231, 74, 59, 0.7)',
+                                    borderColor: 'rgba(231, 74, 59, 1)',
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    stacked: false,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                },
+                                y: {
+                                    stacked: false
                                 }
                             },
-                            y: {
-                                stacked: false
-                            }
-                        },
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Top 5 Vehículos por Servicios'
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Top 5 Vehículos por Servicios'
+                                }
                             }
                         }
-                    }
-                });
-            }
+                    });
+                }
             <?php endif; ?>
         }
 
@@ -775,7 +946,7 @@ function formatearTiempo($minutos)
 
                     const servicio = data.servicio || {};
                     const eventos = data.eventos || [];
-                    
+
                     // Determinar tiempo total
                     let tiempoTotal = 'En curso';
                     if (servicio.estado === 'finalizado' || servicio.estado === 'cancelado') {
@@ -787,7 +958,7 @@ function formatearTiempo($minutos)
                             tiempoTotal = formatearTiempo(minutos);
                         }
                     }
-                    
+
                     // Determinar cliente
                     const nombreCliente = servicio.cliente_nombre || servicio.cliente_telefono || 'N/A';
 
@@ -859,7 +1030,7 @@ function formatearTiempo($minutos)
                             </div>
                             <div class="card-body">
                                 <div class="timeline">`;
-                        
+
                         eventos.forEach(evento => {
                             html += `
                             <div class="timeline-item">
@@ -871,7 +1042,7 @@ function formatearTiempo($minutos)
                                 </div>
                             </div>`;
                         });
-                        
+
                         html += `
                                 </div>
                             </div>
@@ -889,7 +1060,7 @@ function formatearTiempo($minutos)
         // Función para formatear estado de servicio
         function formatearEstado(estado) {
             if (!estado) return 'N/A';
-            
+
             const estados = {
                 'pendiente': '<span class="badge bg-warning">Pendiente</span>',
                 'asignado': '<span class="badge bg-primary">Asignado</span>',
@@ -897,7 +1068,7 @@ function formatearTiempo($minutos)
                 'finalizado': '<span class="badge bg-success">Finalizado</span>',
                 'cancelado': '<span class="badge bg-danger">Cancelado</span>'
             };
-            
+
             return estados[estado] || estado;
         }
     });

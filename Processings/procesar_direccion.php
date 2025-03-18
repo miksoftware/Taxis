@@ -68,6 +68,47 @@ switch ($accion) {
         $resultado = $direccionController->actualizar($id, $datos);
         echo json_encode($resultado);
         break;
+
+
+        case 'editar_direccion':
+            // Verificar datos necesarios
+            if (empty($_POST['servicio_id']) || empty($_POST['direccion_id']) || empty($_POST['nueva_direccion'])) {
+                echo json_encode(['error' => true, 'mensaje' => 'Datos incompletos']);
+                exit;
+            }
+            
+            $servicio_id = intval($_POST['servicio_id']);
+            $direccion_id = intval($_POST['direccion_id']);
+            $nueva_direccion = trim($_POST['nueva_direccion']);
+            
+            // Cargar controlador de servicios para actualizar la referencia
+            require_once '../Controllers/ServicioController.php';
+            $servicioController = new ServicioController($pdo);
+            
+            // Preparar datos para actualización
+            $datos = [
+                'direccion' => $nueva_direccion
+            ];
+            
+            // Actualizar dirección
+            $resultado = $direccionController->actualizar($direccion_id, $datos);
+            
+            if (!isset($resultado['error']) || !$resultado['error']) {
+                // Actualizar la referencia en el servicio si es necesario
+                $servicioController->actualizarDireccion($servicio_id, $direccion_id);
+                
+                // Actualizar último uso
+                $direccionController->actualizarUltimoUso($direccion_id);
+                
+                echo json_encode([
+                    'error' => false,
+                    'mensaje' => 'Dirección actualizada correctamente',
+                    'direccion' => $nueva_direccion
+                ]);
+            } else {
+                echo json_encode($resultado);
+            }
+            break;
     
     case 'eliminar':
         // Verificar datos necesarios
