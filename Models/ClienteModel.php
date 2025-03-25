@@ -175,66 +175,78 @@ class Cliente
         }
     }
 
-    /**
-     * Lista clientes con paginación
-     */
-    public function listarPaginado($filtro = '', $limite = 15, $offset = 0)
-    {
-        try {
-            $sql = "SELECT * FROM clientes WHERE 1=1";
-            $params = [];
-
-            if (!empty($filtro)) {
-                $sql .= " AND (telefono LIKE :filtro OR nombre LIKE :filtro)";
-                $params[':filtro'] = "%$filtro%";
-            }
-
-            $sql .= " ORDER BY fecha_registro DESC LIMIT :limite OFFSET :offset";
-
-            $stmt = $this->pdo->prepare($sql);
-
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value, PDO::PARAM_STR);
-            }
-
-            $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-            $stmt->execute();
-
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            return [
-                'error' => true,
-                'mensaje' => 'Error al listar clientes: ' . $e->getMessage()
-            ];
+   /**
+ * Lista clientes con paginación y filtro
+ *
+ * @param string $filtro Texto para filtrar por nombre o teléfono
+ * @param int $limite Cantidad de registros por página
+ * @param int $offset Desplazamiento para paginación
+ * @return array Lista de clientes
+ */
+public function listarPaginado($filtro = '', $limite = 15, $offset = 0)
+{
+    try {
+        $condicion = '';
+        $params = [];
+        
+        if (!empty($filtro)) {
+            $condicion = " WHERE nombre LIKE :filtro OR telefono LIKE :filtro ";
+            $params[':filtro'] = '%' . $filtro . '%';
         }
-    }
-
-    /**
-     * Cuenta el total de clientes (para paginación)
-     */
-    public function contarTotal($filtro = '')
-    {
-        try {
-            $sql = "SELECT COUNT(*) FROM clientes WHERE 1=1";
-            $params = [];
-
-            if (!empty($filtro)) {
-                $sql .= " AND (telefono LIKE :filtro OR nombre LIKE :filtro)";
-                $params[':filtro'] = "%$filtro%";
-            }
-
-            $stmt = $this->pdo->prepare($sql);
-
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value, PDO::PARAM_STR);
-            }
-
-            $stmt->execute();
-
-            return $stmt->fetchColumn();
-        } catch (PDOException $e) {
-            return 0;
+        
+        $sql = "SELECT * FROM clientes $condicion ORDER BY id DESC LIMIT :limite OFFSET :offset";
+        
+        $stmt = $this->pdo->prepare($sql);
+        
+        if (!empty($filtro)) {
+            $stmt->bindValue(':filtro', '%' . $filtro . '%', PDO::PARAM_STR);
         }
+        
+        $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+    } catch (PDOException $e) {
+        error_log('Error al listar clientes paginados: ' . $e->getMessage());
+        return [];
     }
+}
+
+/**
+ * Cuenta el total de clientes según un filtro
+ *
+ * @param string $filtro Texto para filtrar
+ * @return int Total de clientes
+ */
+public function contarTotal($filtro = '')
+{
+    try {
+        $condicion = '';
+        $params = [];
+        
+        if (!empty($filtro)) {
+            $condicion = " WHERE nombre LIKE :filtro OR telefono LIKE :filtro ";
+            $params[':filtro'] = '%' . $filtro . '%';
+        }
+        
+        $sql = "SELECT COUNT(*) as total FROM clientes $condicion";
+        
+        $stmt = $this->pdo->prepare($sql);
+        
+        if (!empty($filtro)) {
+            $stmt->bindValue(':filtro', '%' . $filtro . '%', PDO::PARAM_STR);
+        }
+        
+        $stmt->execute();
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int)$resultado['total'];
+        
+    } catch (PDOException $e) {
+        error_log('Error al contar clientes: ' . $e->getMessage());
+        return 0;
+    }
+}
 }

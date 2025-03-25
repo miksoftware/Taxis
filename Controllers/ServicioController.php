@@ -592,4 +592,128 @@ class ServicioController
             ];
         }
     }
+
+        /**
+     * Obtiene el último servicio de un cliente específico
+     * @param int $cliente_id ID del cliente
+     * @return array|null Datos del último servicio o null si no existe
+     */
+    public function obtenerUltimoServicioCliente($cliente_id) 
+    {
+        if (!$cliente_id) {
+            return null;
+        }
+
+        try {
+            $sql = "
+            SELECT s.*, 
+                  d.direccion as direccion,
+                  v.placa as vehiculo_placa,
+                  v.numero_movil as movil,
+                  CONCAT(u.nombres, ' ', u.apellidos) as conductor_nombre
+            FROM servicios s
+            LEFT JOIN direcciones d ON s.direccion_id = d.id
+            LEFT JOIN vehiculos v ON s.vehiculo_id = v.id
+            LEFT JOIN usuarios u ON v.conductor_id = u.id
+            WHERE s.cliente_id = :cliente_id
+            ORDER BY s.fecha_solicitud DESC
+            LIMIT 1
+            ";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':cliente_id', $cliente_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al obtener último servicio del cliente: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Obtiene lista de clientes más frecuentes
+     * @param int $limite Cantidad máxima de resultados
+     * @return array Lista de clientes con mayor cantidad de servicios
+     */
+    public function obtenerClientesFrecuentes($limite = 5)
+    {
+        try {
+            $sql = "
+            SELECT 
+                c.id,
+                c.nombre,
+                c.telefono,
+                COUNT(s.id) as total_servicios
+            FROM 
+                clientes c
+            JOIN 
+                servicios s ON c.id = s.cliente_id
+            GROUP BY 
+                c.id, c.nombre, c.telefono
+            ORDER BY 
+                COUNT(s.id) DESC
+            LIMIT :limite
+            ";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':limite', $limite, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al obtener clientes frecuentes: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Cuenta el total de servicios registrados
+     * @return int Número total de servicios
+     */
+    public function contarTotal()
+    {
+        try {
+            $sql = "SELECT COUNT(*) as total FROM servicios";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute();
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            return intval($resultado['total']);
+        } catch (PDOException $e) {
+            error_log('Error al contar servicios totales: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Cuenta el total de servicios registrados en una fecha específica
+     * @param string $fecha Fecha en formato YYYY-MM-DD
+     * @return int Número total de servicios en esa fecha
+     */
+    public function contarPorFecha($fecha)
+    {
+        try {
+            $fecha_inicio = $fecha . ' 00:00:00';
+            $fecha_fin = $fecha . ' 23:59:59';
+            
+            $sql = "
+            SELECT COUNT(*) as total 
+            FROM servicios 
+            WHERE fecha_solicitud BETWEEN :fecha_inicio AND :fecha_fin
+            ";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':fecha_inicio', $fecha_inicio, PDO::PARAM_STR);
+            $stmt->bindParam(':fecha_fin', $fecha_fin, PDO::PARAM_STR);
+            $stmt->execute();
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+            return intval($resultado['total']);
+        } catch (PDOException $e) {
+            error_log('Error al contar servicios por fecha: ' . $e->getMessage());
+            return 0;
+        }
+    }    
+   
 }

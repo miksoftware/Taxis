@@ -138,6 +138,28 @@ include 'Layouts/header.php';
                 </div>
             </div>
         </div>
+
+
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-success">Gestión de clientes</h6>
+                    <i class="bi bi-people fs-4 text-success opacity-75"></i>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="ReporteClientes.php" class="btn btn-outline-success d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-person-lines-fill me-2"></i> Historial de clientes</span>
+                            <i class="bi bi-chevron-right"></i>
+                        </a>                        
+                    </div>
+                    <p class="card-text mt-3 small text-muted">
+                        Reportes de servicios por cliente.
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>    
 </div>
 

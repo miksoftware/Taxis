@@ -2,6 +2,7 @@
 // Iniciar sesión
 session_start();
 
+
 // Verificar autenticación 
 if (!isset($_SESSION['usuario_id'])) {
     echo '<div class="alert alert-danger">No autorizado</div>';

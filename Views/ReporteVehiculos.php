@@ -424,7 +424,6 @@ function formatearTiempo($minutos)
                                 <th>Operador</th>
                                 <th>Estado</th>
                                 <th>Tiempo Total</th>
-                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -476,11 +475,6 @@ function formatearTiempo($minutos)
                                                 echo 'En curso';
                                             }
                                             ?>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info verDetalle" data-id="<?= $servicio['id'] ?>">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -586,26 +580,6 @@ function formatearTiempo($minutos)
     <?php endif; ?>
 </div>
 
-<!-- Modal de Detalle de Servicio -->
-<div class="modal fade" id="modalDetalleServicio" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Detalle del Servicio</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="detalleServicioContenido">
-                <!-- Contenido dinámico -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Scripts necesarios -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Referencias a elementos importantes
@@ -911,152 +885,6 @@ function formatearTiempo($minutos)
                 }
             <?php endif; ?>
         }
-
-        // Función para ver detalle de servicio
-        function verDetalleServicio(servicioId) {
-            const modal = document.getElementById('modalDetalleServicio');
-            const contenido = document.getElementById('detalleServicioContenido');
-
-            // Mostrar carga en el modal
-            contenido.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
-
-            // Verificar si Bootstrap está disponible
-            if (typeof bootstrap !== 'undefined') {
-                const modalInstance = new bootstrap.Modal(modal);
-                modalInstance.show();
-            } else {
-                console.error("Bootstrap no está disponible");
-                // Fallback básico para mostrar el modal
-                modal.style.display = 'block';
-                modal.classList.add('show');
-            }
-
-            // Realizar solicitud al servidor
-            fetch(`../Processings/obtener_detalle_servicio.php?id=${servicioId}`)
-                .then(response => {
-                    console.log("Respuesta recibida:", response);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Datos recibidos:', data);
-                    if (data.error) {
-                        contenido.innerHTML = `<div class="alert alert-danger">${data.mensaje}</div>`;
-                        return;
-                    }
-
-                    const servicio = data.servicio || {};
-                    const eventos = data.eventos || [];
-
-                    // Determinar tiempo total
-                    let tiempoTotal = 'En curso';
-                    if (servicio.estado === 'finalizado' || servicio.estado === 'cancelado') {
-                        if (servicio.fecha_fin && servicio.fecha_solicitud) {
-                            const inicio = new Date(servicio.fecha_solicitud);
-                            const fin = new Date(servicio.fecha_fin);
-                            const diff = fin - inicio; // diferencia en milisegundos
-                            const minutos = Math.floor(diff / 60000);
-                            tiempoTotal = formatearTiempo(minutos);
-                        }
-                    }
-
-                    // Determinar cliente
-                    const nombreCliente = servicio.cliente_nombre || servicio.cliente_telefono || 'N/A';
-
-                    // Construir HTML del detalle
-                    let html = `
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="m-0">Servicio #${servicio.id}</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p><strong>Cliente:</strong> ${nombreCliente}</p>
-                                    <p><strong>Teléfono:</strong> ${servicio.cliente_telefono || 'N/A'}</p>
-                                    <p><strong>Dirección:</strong> ${servicio.direccion || 'N/A'}</p>
-                                    <p><strong>Referencia:</strong> ${servicio.referencia || 'N/A'}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p><strong>Fecha Solicitud:</strong> ${formatearFechaHora(servicio.fecha_solicitud)}</p>
-                                    <p><strong>Estado:</strong> ${formatearEstado(servicio.estado)}</p>
-                                    <p><strong>Operador:</strong> ${servicio.operador_nombre || 'N/A'}</p>
-                                    <p><strong>Tiempo Total:</strong> ${tiempoTotal}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-
-                    // Información del vehículo si existe
-                    if (servicio.placa) {
-                        html += `
-                        <div class="card mb-4">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="m-0">Información del Vehículo</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <p><strong>Vehículo:</strong> ${servicio.numero_movil} - ${servicio.placa}</p>
-                                        <p><strong>Marca/Modelo:</strong> ${servicio.marca || 'N/A'} / ${servicio.modelo || 'N/A'}</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p><strong>Color:</strong> ${servicio.color || 'N/A'}</p>
-                                        <p><strong>Conductor:</strong> ${servicio.conductor_nombre || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
-                    }
-
-                    // Comentarios del cliente si existen
-                    if (servicio.comentarios) {
-                        html += `
-                        <div class="card mb-4">
-                            <div class="card-header bg-warning text-dark">
-                                <h5 class="m-0">Comentarios del Cliente</h5>
-                            </div>
-                            <div class="card-body">
-                                <p>${servicio.comentarios}</p>
-                            </div>
-                        </div>`;
-                    }
-
-                    // Historial de eventos del servicio
-                    if (eventos && eventos.length > 0) {
-                        html += `
-                        <div class="card mb-4">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="m-0">Historial de Eventos</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="timeline">`;
-
-                        eventos.forEach(evento => {
-                            html += `
-                            <div class="timeline-item">
-                                <div class="timeline-marker"></div>
-                                <div class="timeline-content">
-                                    <h6 class="mb-0">${formatearFechaHora(evento.fecha_evento)}</h6>
-                                    <p><strong>${evento.tipo}</strong>: ${evento.descripcion}</p>
-                                    <small class="text-muted">Por: ${evento.usuario_nombre || 'Sistema'}</small>
-                                </div>
-                            </div>`;
-                        });
-
-                        html += `
-                                </div>
-                            </div>
-                        </div>`;
-                    }
-
-                    contenido.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    contenido.innerHTML = '<div class="alert alert-danger">Error al cargar los detalles del servicio</div>';
-                });
-        }
-
         // Función para formatear estado de servicio
         function formatearEstado(estado) {
             if (!estado) return 'N/A';
