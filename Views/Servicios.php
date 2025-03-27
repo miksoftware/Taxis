@@ -265,6 +265,13 @@ unset($_SESSION['tipo_mensaje']);
             </div>
             <div class="modal-body">
                 <input type="hidden" id="cambiarServicioId">
+                
+                <!-- Añadir campo para mostrar la dirección -->
+                <div class="alert alert-light border mb-3">
+                    <p class="mb-1"><strong><i class="bi bi-geo-alt"></i> Dirección del servicio:</strong></p>
+                    <p id="cambiarDireccionServicio" class="mb-0 fw-bold"></p>
+                </div>
+                
                 <div class="mb-3">
                     <p class="mb-1"><strong>Vehículo actual:</strong> <span id="vehiculoActual"></span></p>
                 </div>
@@ -273,13 +280,7 @@ unset($_SESSION['tipo_mensaje']);
                     <select id="nuevoVehiculoSelect" class="form-select">
                         <?php if (!empty($vehiculos) && !isset($vehiculos['error'])): ?>
                             <?php foreach ($vehiculos as $vehiculo): ?>
-                                <option value="<?= $vehiculo['id'] ?>">
-                                    <?= htmlspecialchars($vehiculo['numero_movil']) ?> -
-                                    <?= htmlspecialchars($vehiculo['placa']) ?>
-                                    <?php if (!empty($vehiculo['modelo'])): ?>
-                                        (<?= htmlspecialchars($vehiculo['modelo']) ?>)
-                                    <?php endif; ?>
-                                </option>
+                                <!-- Opciones existentes -->
                             <?php endforeach; ?>
                         <?php else: ?>
                             <option value="" disabled>No hay vehículos disponibles</option>
@@ -287,18 +288,17 @@ unset($_SESSION['tipo_mensaje']);
                     </select>
                 </div>
 
-                <!-- Añadir radio buttons para tipo de vehículo -->
+                <!-- Cambiar layout de los radio buttons a horizontal -->
                 <div class="mb-3">
                     <label class="form-label">Tipo de asignación:</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoProximo" value="proximo" checked>
-                        <label class="form-check-label" for="nuevoTipoProximo">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="nuevoTipoVehiculo" id="nuevoTipoProximo" value="proximo" checked autocomplete="off">
+                        <label class="btn btn-outline-info" for="nuevoTipoProximo">
                             <i class="bi bi-signpost-split"></i> Próximo
                         </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="nuevoTipoVehiculo" id="nuevoTipoUnico" value="unico">
-                        <label class="form-check-label" for="nuevoTipoUnico">
+
+                        <input type="radio" class="btn-check" name="nuevoTipoVehiculo" id="nuevoTipoUnico" value="unico" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="nuevoTipoUnico">
                             <i class="bi bi-car-front"></i> Único
                         </label>
                     </div>
@@ -328,36 +328,37 @@ unset($_SESSION['tipo_mensaje']);
             </div>
             <div class="modal-body">
                 <input type="hidden" id="servicioId">
+                
+                <!-- Añadir campo para mostrar la dirección -->
+                <div class="alert alert-light border mb-3">
+                    <p class="mb-1"><strong><i class="bi bi-geo-alt"></i> Dirección del servicio:</strong></p>
+                    <p id="asignarDireccionServicio" class="mb-0 fw-bold"></p>
+                </div>
+                
                 <div class="mb-3">
                     <label for="vehiculoSelect" class="form-label">Seleccione un vehículo:</label>
                     <select id="vehiculoSelect" class="form-select">
                         <?php if (!empty($vehiculos) && !isset($vehiculos['error'])): ?>
                             <?php foreach ($vehiculos as $vehiculo): ?>
-                                <option value="<?= $vehiculo['id'] ?>">
-                                    <?= htmlspecialchars($vehiculo['numero_movil']) ?> -
-                                    <?= htmlspecialchars($vehiculo['placa']) ?>
-                                    <?php if (!empty($vehiculo['modelo'])): ?>
-                                        (<?= htmlspecialchars($vehiculo['modelo']) ?>)
-                                    <?php endif; ?>
-                                </option>
+                                <!-- Opciones existentes -->
                             <?php endforeach; ?>
                         <?php else: ?>
                             <option value="" disabled>No hay vehículos disponibles</option>
                         <?php endif; ?>
                     </select>
                 </div>
-                <!-- Añadir radio buttons para tipo de vehículo -->
+                
+                <!-- Cambiar layout de los radio buttons a horizontal -->
                 <div class="mb-3">
                     <label class="form-label">Tipo de asignación:</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoProximo" value="proximo" checked>
-                        <label class="form-check-label" for="tipoProximo">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="tipoVehiculo" id="tipoProximo" value="proximo" checked autocomplete="off">
+                        <label class="btn btn-outline-info" for="tipoProximo">
                             <i class="bi bi-signpost-split"></i> Próximo
                         </label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoVehiculo" id="tipoUnico" value="unico">
-                        <label class="form-check-label" for="tipoUnico">
+
+                        <input type="radio" class="btn-check" name="tipoVehiculo" id="tipoUnico" value="unico" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="tipoUnico">
                             <i class="bi bi-car-front"></i> Único
                         </label>
                     </div>
@@ -600,80 +601,93 @@ unset($_SESSION['tipo_mensaje']);
 
 
             document.querySelectorAll('.asignarServicio').forEach(button => {
-                button.addEventListener('click', function() {
-                    const servicioId = this.getAttribute('data-id');
-                    document.getElementById('servicioId').value = servicioId;
+    button.addEventListener('click', function() {
+        const servicioId = this.getAttribute('data-id');
+        document.getElementById('servicioId').value = servicioId;
+        
+        // Obtener la dirección de la fila actual
+        const fila = this.closest('tr');
+        const direccion = fila.querySelector('td:nth-child(2)').textContent.trim();
+        
+        // Mostrar la dirección en el modal
+        document.getElementById('asignarDireccionServicio').textContent = direccion;
 
-                    // Cargar vehículos disponibles dinámicamente
-                    fetch('../Processings/obtener_vehiculos_disponibles.php')
-                        .then(response => response.json())
-                        .then(data => {
-                            const vehiculoSelect = document.getElementById('vehiculoSelect');
-                            vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+        // Cargar vehículos disponibles dinámicamente
+        fetch('../Processings/obtener_vehiculos_disponibles.php')
+            .then(response => response.json())
+            .then(data => {
+                const vehiculoSelect = document.getElementById('vehiculoSelect');
+                vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
 
-                            if (data.vehiculos && data.vehiculos.length > 0) {
-                                data.vehiculos.forEach(vehiculo => {
-                                    const option = document.createElement('option');
-                                    option.value = vehiculo.id;
-                                    option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
-                                    vehiculoSelect.appendChild(option);
-                                });
-                            } else {
-                                const option = document.createElement('option');
-                                option.disabled = true;
-                                option.textContent = 'No hay vehículos disponibles';
-                                vehiculoSelect.appendChild(option);
-                            }
+                if (data.vehiculos && data.vehiculos.length > 0) {
+                    data.vehiculos.forEach(vehiculo => {
+                        const option = document.createElement('option');
+                        option.value = vehiculo.id;
+                        option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
+                        vehiculoSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.disabled = true;
+                    option.textContent = 'No hay vehículos disponibles';
+                    vehiculoSelect.appendChild(option);
+                }
 
-                            // Mostrar modal después de cargar los vehículos
-                            new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
-                        })
-                        .catch(error => {
-                            console.error('Error al cargar vehículos:', error);
-                            alert('Error al cargar vehículos disponibles');
-                        });
-                });
+                // Mostrar modal después de cargar los vehículos
+                new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
+            })
+            .catch(error => {
+                console.error('Error al cargar vehículos:', error);
+                alert('Error al cargar vehículos disponibles');
             });
+    });
+});
 
-            document.querySelectorAll('.cambiarMovil').forEach(button => {
-                button.addEventListener('click', function() {
-                    const servicioId = this.getAttribute('data-id');
-                    const fila = this.closest('tr');
-                    const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
+document.querySelectorAll('.cambiarMovil').forEach(button => {
+    button.addEventListener('click', function() {
+        const servicioId = this.getAttribute('data-id');
+        const fila = this.closest('tr');
+        const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
+        
+        // Obtener la dirección de la fila actual
+        const direccion = fila.querySelector('td:nth-child(2)').textContent.trim();
+        
+        // Mostrar la dirección en el modal
+        document.getElementById('cambiarDireccionServicio').textContent = direccion;
 
-                    document.getElementById('cambiarServicioId').value = servicioId;
-                    document.getElementById('vehiculoActual').textContent = vehiculoActual;
+        document.getElementById('cambiarServicioId').value = servicioId;
+        document.getElementById('vehiculoActual').textContent = vehiculoActual;
 
-                    // Cargar vehículos disponibles dinámicamente
-                    fetch('../Processings/obtener_vehiculos_disponibles.php')
-                        .then(response => response.json())
-                        .then(data => {
-                            const vehiculoSelect = document.getElementById('nuevoVehiculoSelect');
-                            vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+        // Cargar vehículos disponibles dinámicamente
+        fetch('../Processings/obtener_vehiculos_disponibles.php')
+            .then(response => response.json())
+            .then(data => {
+                const vehiculoSelect = document.getElementById('nuevoVehiculoSelect');
+                vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
 
-                            if (data.vehiculos && data.vehiculos.length > 0) {
-                                data.vehiculos.forEach(vehiculo => {
-                                    const option = document.createElement('option');
-                                    option.value = vehiculo.id;
-                                    option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
-                                    vehiculoSelect.appendChild(option);
-                                });
-                            } else {
-                                const option = document.createElement('option');
-                                option.disabled = true;
-                                option.textContent = 'No hay vehículos disponibles';
-                                vehiculoSelect.appendChild(option);
-                            }
+                if (data.vehiculos && data.vehiculos.length > 0) {
+                    data.vehiculos.forEach(vehiculo => {
+                        const option = document.createElement('option');
+                        option.value = vehiculo.id;
+                        option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
+                        vehiculoSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.disabled = true;
+                    option.textContent = 'No hay vehículos disponibles';
+                    vehiculoSelect.appendChild(option);
+                }
 
-                            // Mostrar modal después de cargar los vehículos
-                            new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
-                        })
-                        .catch(error => {
-                            console.error('Error al cargar vehículos:', error);
-                            alert('Error al cargar vehículos disponibles');
-                        });
-                });
+                // Mostrar modal después de cargar los vehículos
+                new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
+            })
+            .catch(error => {
+                console.error('Error al cargar vehículos:', error);
+                alert('Error al cargar vehículos disponibles');
             });
+    });
+});
 
             document.querySelectorAll('.finalizarServicio').forEach(button => {
                 button.addEventListener('click', function() {
