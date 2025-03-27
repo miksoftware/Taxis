@@ -115,25 +115,39 @@ include 'Layouts/header.php';
             </div>
             
             <!-- Paginación -->
-            <?php if ($totalPaginas > 1): ?>
-            <nav aria-label="Paginación" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?pagina=<?= $pagina - 1 ?>&busqueda=<?= urlencode($busqueda) ?>">Anterior</a>
-                    </li>
-                    
-                    <?php for ($i = 1; $i <= $totalPaginas; $i++): ?>
-                    <li class="page-item <?= $i == $pagina ? 'active' : '' ?>">
-                        <a class="page-link" href="?pagina=<?= $i ?>&busqueda=<?= urlencode($busqueda) ?>"><?= $i ?></a>
-                    </li>
-                    <?php endfor; ?>
-                    
-                    <li class="page-item <?= $pagina >= $totalPaginas ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?pagina=<?= $pagina + 1 ?>&busqueda=<?= urlencode($busqueda) ?>">Siguiente</a>
-                    </li>
-                </ul>
-            </nav>
+             <?php if ($totalPaginas > 1): ?>
+                <nav aria-label="Navegación de páginas">
+                    <ul class="pagination justify-content-center">
+                        <?php if ($pagina > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="?pagina=<?= $pagina - 1 ?>&filtro=<?= urlencode($busqueda) ?>">Anterior</a>
+                            </li>
+                        <?php else: ?>
+                            <li class="page-item disabled">
+                                <span class="page-link">Anterior</span>
+                            </li>
+                        <?php endif; ?>
+                        
+                        <?php for ($i = max(1, $pagina - 2); $i <= min($totalPaginas, $pagina + 2); $i++): ?>
+                            <li class="page-item <?= $i === $pagina ? 'active' : '' ?>">
+                                <a class="page-link" href="?pagina=<?= $i ?>&filtro=<?= urlencode($busqueda) ?>"><?= $i ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        
+                        <?php if ($pagina < $totalPaginas): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="?pagina=<?= $pagina + 1 ?>&filtro=<?= urlencode($busqueda) ?>">Siguiente</a>
+                            </li>
+                        <?php else: ?>
+                            <li class="page-item disabled">
+                                <span class="page-link">Siguiente</span>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
+                </nav>
             <?php endif; ?>
+            
+            
         </div>
     </div>
 </div>

@@ -176,14 +176,7 @@ class VehiculoController {
         } elseif (!preg_match('/^[A-Z0-9]{6,8}$/', strtoupper(trim($datos['placa'])))) {
             $errores['placa'] = 'Formato de placa inválido';
         }
-        
-        // Validar número de móvil
-        if (empty($datos['numero_movil'])) {
-            $errores['numero_movil'] = 'El número de móvil es requerido';
-        } elseif (!preg_match('/^[0-9]{1,4}$/', trim($datos['numero_movil']))) {
-            $errores['numero_movil'] = 'El número de móvil debe ser numérico y no exceder 4 dígitos';
-        }
-        
+                
         return $errores;
     }
     

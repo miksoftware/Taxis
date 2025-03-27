@@ -175,8 +175,8 @@ unset($_SESSION['tipo_mensaje']);
                     </div>
                     <div class="mb-3">
                         <label for="numero_movil" class="form-label">Número de Móvil</label>
-                        <input type="text" class="form-control" id="numero_movil" name="numero_movil" required maxlength="4" placeholder="Ej. 1234">
-                        <div class="form-text">Número identificador del vehículo (máximo 4 dígitos)</div>
+                        <input type="text" class="form-control" id="numero_movil" name="numero_movil" required maxlength="10" placeholder="Ej. 1234">
+                        <div class="form-text">Número identificador del vehículo (máximo 10 dígitos)</div>
                     </div>
                     <div class="mb-3">
                         <label for="estado" class="form-label">Estado</label>
@@ -217,7 +217,7 @@ unset($_SESSION['tipo_mensaje']);
                     </div>
                     <div class="mb-3">
                         <label for="editar_numero_movil" class="form-label">Número de Móvil</label>
-                        <input type="text" class="form-control" id="editar_numero_movil" name="numero_movil" required maxlength="4">
+                        <input type="text" class="form-control" id="editar_numero_movil" name="numero_movil" required maxlength="10">
                     </div>
                     <div class="mb-3">
                         <label for="editar_estado" class="form-label">Estado</label>
