@@ -146,6 +146,7 @@ unset($_SESSION['tipo_mensaje']);
                         <th>Vehículo</th>
                         <th>Servicio</th>
                         <th>Estado</th>
+                        <th>Fecha Inicio</th>
                         <th>Tiempo</th>
                         <th>Acciones</th>
                     </tr>
@@ -202,6 +203,11 @@ unset($_SESSION['tipo_mensaje']);
                                     <?php elseif ($servicio['estado'] == 'en_camino'): ?>
                                         <span class="badge bg-primary">En camino</span>
                                     <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php
+                                        echo $servicio['fecha_solicitud'];                                    
+                                    ?>
                                 </td>
                                 <td>
                                     <?php if ($servicio['estado'] == 'pendiente'): ?>
@@ -560,6 +566,7 @@ unset($_SESSION['tipo_mensaje']);
                         <td>${infoVehiculo}</td>
                         <td>${tipoVehiculoBadge}</td>
                         <td>${estadoBadge}</td>
+                        <td>${fecha_solicitud}</td>
                         <td><span class="tiempoTranscurrido" data-inicio="${tiempoInicio}">${tiempoFormateado}</span></td>
                         <td>${botonesAccion}</td>
                     </tr>`;
