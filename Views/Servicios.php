@@ -207,18 +207,12 @@ unset($_SESSION['tipo_mensaje']);
                                 <td>
                                     <?php
                                         echo $servicio['fecha_solicitud'];                                    
-                                    ?>
+                                    ?>                                    
                                 </td>
                                 <td>
-                                    <?php if ($servicio['estado'] == 'pendiente'): ?>
                                         <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_solicitud'] ?>">
                                             <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_solicitud']) ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_asignacion'] ?>">
-                                            <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_asignacion']) ?>
-                                        </span>
-                                    <?php endif; ?>
+                                        </span>                                    
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-warning btn-sm editarDireccion" title="Editar dirección"
@@ -469,7 +463,7 @@ unset($_SESSION['tipo_mensaje']);
         
                     data.servicios.forEach(servicio => {
                         // Calcular el tiempo transcurrido
-                        const tiempoInicio = servicio.estado === 'pendiente' ? servicio.fecha_solicitud : servicio.fecha_asignacion;
+                        const tiempoInicio = servicio.fecha_solicitud;
                         const ahora = new Date();
                         const fechaInicio = new Date(tiempoInicio);
                         const diffMinutos = Math.floor((ahora - fechaInicio) / 1000 / 60);
