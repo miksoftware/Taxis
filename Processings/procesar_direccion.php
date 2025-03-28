@@ -81,32 +81,48 @@ switch ($accion) {
             $direccion_id = intval($_POST['direccion_id']);
             $nueva_direccion = trim($_POST['nueva_direccion']);
             
-            // Cargar controlador de servicios para actualizar la referencia
-            require_once '../Controllers/ServicioController.php';
-            $servicioController = new ServicioController($pdo);
-            
-            // Preparar datos para actualización
-            $datos = [
-                'direccion' => $nueva_direccion
-            ];
-            
-            // Actualizar dirección
-            $resultado = $direccionController->actualizar($direccion_id, $datos);
-            
-            if (!isset($resultado['error']) || !$resultado['error']) {
-                // Actualizar la referencia en el servicio si es necesario
-                $servicioController->actualizarDireccion($servicio_id, $direccion_id);
+            try {
+                // Iniciar transacción para asegurar que ambas operaciones sean atómicas
+                $pdo->beginTransaction();
                 
-                // Actualizar último uso
-                $direccionController->actualizarUltimoUso($direccion_id);
+                // Actualizar dirección
+                $sql = "UPDATE direcciones SET direccion = :direccion WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':direccion', $nueva_direccion, PDO::PARAM_STR);
+                $stmt->bindParam(':id', $direccion_id, PDO::PARAM_INT);
+                $stmt->execute();
+                
+                // Actualizar la fecha_actualizacion del servicio
+                $sql = "UPDATE servicios SET fecha_actualizacion = NOW() WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':id', $servicio_id, PDO::PARAM_INT);
+                $stmt->execute();
+                
+                // Actualizar último uso de la dirección
+                $sql = "UPDATE direcciones SET ultimo_uso = NOW() WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':id', $direccion_id, PDO::PARAM_INT);
+                $stmt->execute();
+                
+                // Confirmar transacción
+                $pdo->commit();
                 
                 echo json_encode([
                     'error' => false,
                     'mensaje' => 'Dirección actualizada correctamente',
                     'direccion' => $nueva_direccion
                 ]);
-            } else {
-                echo json_encode($resultado);
+            } catch (PDOException $e) {
+                // Si hay un error, revertir cambios
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                
+                error_log('Error al actualizar dirección: ' . $e->getMessage());
+                echo json_encode([
+                    'error' => true,
+                    'mensaje' => 'Error al actualizar dirección: ' . $e->getMessage()
+                ]);
             }
             break;
     

@@ -73,6 +73,12 @@ switch ($accion) {
         // Crear el servicio
         $resultado = $servicioController->crear($datos);
 
+        // Si fue exitoso, asegúrate de que la fecha_actualizacion esté fresca
+        if (!$resultado['error'] && isset($resultado['id'])) {
+            // Forzar actualización de la fecha_actualizacion para garantizar que se detecte
+            $pdo->query("UPDATE servicios SET fecha_actualizacion = NOW() WHERE id = " . intval($resultado['id']));
+        }
+
         // Información de depuración
         error_log("Resultado creación: " . json_encode($resultado));
 
@@ -101,21 +107,21 @@ switch ($accion) {
         }
         break;
 
-        case 'asignar':
-            // Verificar datos necesarios
-            if (empty($_POST['servicio_id']) || empty($_POST['vehiculo_id'])) {
-                echo json_encode(['error' => true, 'mensaje' => 'Faltan datos obligatorios']);
-                exit;
-            }
-        
-            // Quita el intval() para el tipo_vehiculo ya que debe ser string
-            $resultado = $servicioController->asignar(
-                intval($_POST['servicio_id']),
-                intval($_POST['vehiculo_id']),
-                $_POST['tipo_vehiculo'] // Quita el intval aquí
-            );
-            echo json_encode($resultado);
-            break;
+    case 'asignar':
+        // Verificar datos necesarios
+        if (empty($_POST['servicio_id']) || empty($_POST['vehiculo_id'])) {
+            echo json_encode(['error' => true, 'mensaje' => 'Faltan datos obligatorios']);
+            exit;
+        }
+
+        // Quita el intval() para el tipo_vehiculo ya que debe ser string
+        $resultado = $servicioController->asignar(
+            intval($_POST['servicio_id']),
+            intval($_POST['vehiculo_id']),
+            $_POST['tipo_vehiculo'] // Quita el intval aquí
+        );
+        echo json_encode($resultado);
+        break;
 
     case 'finalizar':
         // Verificar datos necesarios

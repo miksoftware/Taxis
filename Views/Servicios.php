@@ -33,6 +33,7 @@ $vehiculos = $vehiculoController->listar($filtros);
 // Obtener todos los servicios activos (no finalizados ni cancelados)
 $servicios_activos = $servicioController->listarServiciosActivos();
 
+
 // Mensaje de operaciones
 $mensaje = isset($_SESSION['mensaje']) ? $_SESSION['mensaje'] : null;
 $tipo_mensaje = isset($_SESSION['tipo_mensaje']) ? $_SESSION['tipo_mensaje'] : null;
@@ -206,13 +207,13 @@ unset($_SESSION['tipo_mensaje']);
                                 </td>
                                 <td>
                                     <?php
-                                        echo $servicio['fecha_solicitud'];                                    
-                                    ?>                                    
+                                    echo $servicio['fecha_solicitud'];
+                                    ?>
                                 </td>
                                 <td>
-                                        <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_solicitud'] ?>">
-                                            <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_solicitud']) ?>
-                                        </span>                                    
+                                    <span class="tiempoTranscurrido" data-inicio="<?= $servicio['fecha_solicitud'] ?>">
+                                        <?= $servicioController->calcularTiempoTranscurrido($servicio['fecha_solicitud']) ?>
+                                    </span>
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-warning btn-sm editarDireccion" title="Editar dirección"
@@ -265,13 +266,13 @@ unset($_SESSION['tipo_mensaje']);
             </div>
             <div class="modal-body">
                 <input type="hidden" id="cambiarServicioId">
-                
+
                 <!-- Añadir campo para mostrar la dirección -->
                 <div class="alert alert-light border mb-3">
                     <p class="mb-1"><strong><i class="bi bi-geo-alt"></i> Dirección del servicio:</strong></p>
                     <p id="cambiarDireccionServicio" class="mb-0 fw-bold"></p>
                 </div>
-                
+
                 <div class="mb-3">
                     <p class="mb-1"><strong>Vehículo actual:</strong> <span id="vehiculoActual"></span></p>
                 </div>
@@ -328,13 +329,13 @@ unset($_SESSION['tipo_mensaje']);
             </div>
             <div class="modal-body">
                 <input type="hidden" id="servicioId">
-                
+
                 <!-- Añadir campo para mostrar la dirección -->
                 <div class="alert alert-light border mb-3">
                     <p class="mb-1"><strong><i class="bi bi-geo-alt"></i> Dirección del servicio:</strong></p>
                     <p id="asignarDireccionServicio" class="mb-0 fw-bold"></p>
                 </div>
-                
+
                 <div class="mb-3">
                     <label for="vehiculoSelect" class="form-label">Seleccione un vehículo:</label>
                     <select id="vehiculoSelect" class="form-select">
@@ -347,7 +348,7 @@ unset($_SESSION['tipo_mensaje']);
                         <?php endif; ?>
                     </select>
                 </div>
-                
+
                 <!-- Cambiar layout de los radio buttons a horizontal -->
                 <div class="mb-3">
                     <label class="form-label">Tipo de asignación:</label>
@@ -417,24 +418,117 @@ unset($_SESSION['tipo_mensaje']);
         // Variables para controlar el estado de los modales
         let modalEstados = {
             asignarModal: false,
-            cambiarModal: false
+            cambiarModal: false,
+            editarModal: false
         };
 
         // Variable para guardar el ID del intervalo
         let intervaloActualizacion;
 
-              // Función para actualizar la tabla de servicios
+        // Variable para almacenar el último timestamp de actualización
+        let ultimaActualizacion = '';
+
+        // Variable para almacenar IDs de servicios de la última actualización
+        let ultimosServiciosIds = new Set();
+
+        // Añadir estilos para animaciones de cambios
+        const style = document.createElement('style');
+        style.textContent = `
+                                .fila-nueva {
+                                    animation: highlight-green 2s ease-in-out;
+                                }
+                                
+                                .fila-modificada {
+                                    animation: highlight-yellow 2s ease-in-out;
+                                }
+                                
+                                @keyframes highlight-green {
+                                    0% { background-color: rgba(40, 167, 69, 0.3); }
+                                    100% { background-color: transparent; }
+                                }
+                                
+                                @keyframes highlight-yellow {
+                                    0% { background-color: rgba(255, 193, 7, 0.3); }
+                                    100% { background-color: transparent; }
+                                }
+                                
+                                .notificacion-flotante {
+                                    position: fixed;
+                                    top: 20px;
+                                    right: 20px;
+                                    z-index: 9999;
+                                    min-width: 250px;
+                                    max-width: 350px;
+                                    opacity: 0;
+                                    transform: translateY(-20px);
+                                    transition: opacity 0.3s, transform 0.3s;
+                                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                    border-left: 4px solid #0d6efd;
+                                    padding: 12px 15px;
+                                }
+                                
+                                .notificacion-flotante.visible {
+                                    opacity: 1;
+                                    transform: translateY(0);
+                                }
+                                
+                                .notificacion-flotante.success {
+                                    border-color: #28a745;
+                                }
+                                
+                                .notificacion-flotante.warning {
+                                    border-color: #ffc107;
+                                }
+                                
+                                .notificacion-flotante.danger {
+                                    border-color: #dc3545;
+                                }
+                            `;
+        document.head.appendChild(style);
+
+        // Función para mostrar notificaciones
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const notif = document.createElement('div');
+            notif.className = `alert alert-${tipo} notificacion-flotante ${tipo}`;
+
+            // Determinar el ícono según el tipo
+            let icono = 'info-circle';
+            if (tipo === 'success') icono = 'check-circle';
+            if (tipo === 'warning') icono = 'exclamation-triangle';
+            if (tipo === 'danger') icono = 'x-circle';
+
+            notif.innerHTML = `<i class="bi bi-${icono} me-2"></i>${mensaje}`;
+            document.body.appendChild(notif);
+
+            // Animación de entrada
+            setTimeout(() => notif.classList.add('visible'), 10);
+
+            // Auto-destruir después de 3 segundos
+            setTimeout(() => {
+                notif.classList.remove('visible');
+                setTimeout(() => notif.remove(), 500);
+            }, 3000);
+        }
+
+        // Función para actualizar la tabla de servicios
         const actualizarTablaServicios = () => {
             // No actualizar si hay algún modal abierto para evitar interrumpir al usuario
-            if (modalEstados.asignarModal || modalEstados.cambiarModal) {
+            if (modalEstados.asignarModal || modalEstados.cambiarModal || modalEstados.editarModal) {
                 return;
             }
-        
+
             // Guardar la posición de scroll actual
             const scrollPos = window.scrollY;
-        
+
+            // Añadir parámetro de última actualización para obtener solo cambios
+            // y un parámetro aleatorio para prevenir cachés
+            const cacheBuster = `&_cb=${Date.now()}`;
+            const params = (ultimaActualizacion ?
+                `?ultima_actualizacion=${encodeURIComponent(ultimaActualizacion)}` :
+                '?') + cacheBuster;
+
             // Solicitar datos actualizados mediante fetch
-            fetch('../Processings/obtener_servicios_activos.php')
+            fetch('../Processings/obtener_servicios_activos.php' + params)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Error en la respuesta del servidor');
@@ -446,114 +540,154 @@ unset($_SESSION['tipo_mensaje']);
                         console.error('Error al obtener datos:', data.mensaje);
                         return;
                     }
-        
-                    // Actualizar contador de servicios
-                    document.getElementById('contadorServicios').textContent = data.servicios.length;
-        
-                    // Obtener la tabla actual
-                    const tbody = document.querySelector('#tablaServicios tbody');
-        
-                    // Si no hay servicios, mostrar mensaje
-                    if (data.servicios.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="9" class="text-center">No hay servicios activos</td></tr>`;
-                        return;
-                    }
-        
-                    // Generar HTML para los nuevos datos
-                    let htmlServicios = '';
-        
-                    data.servicios.forEach(servicio => {
-                        // Calcular el tiempo transcurrido
-                        const tiempoInicio = servicio.fecha_solicitud;
-                        const ahora = new Date();
-                        const fechaInicio = new Date(tiempoInicio);
-                        const diffMinutos = Math.floor((ahora - fechaInicio) / 1000 / 60);
-        
-                        let tiempoFormateado;
-                        if (diffMinutos < 60) {
-                            tiempoFormateado = diffMinutos + ' min';
-                        } else {
-                            const horas = Math.floor(diffMinutos / 60);
-                            const minutos = diffMinutos % 60;
-                            tiempoFormateado = horas + 'h ' + minutos + 'm';
-                        }
-        
-                        // Generar badge para condición
-                        let condicionBadge = '';
-                        if (servicio.condicion) {
-                            const badgeColor = {
-                                'aire': 'danger',
-                                'baul': 'primary',
-                                'mascota': 'success',
-                                'parrilla': 'warning',
-                                'transferencia': 'info',
-                                'daviplata': 'purple',
-                                'polarizados': 'dark',
-                                'silla_ruedas': 'teal'
-                            } [servicio.condicion] || 'secondary';
-        
-                            // Añadir text-dark solo para warning para mejor legibilidad
-                            const textClass = badgeColor === 'warning' ? ' text-dark' : '';
-        
-                            const condicionText = servicio.condicion.charAt(0).toUpperCase() +
-                                servicio.condicion.slice(1).replace('_', ' ');
-                            condicionBadge = `<span class="badge bg-${badgeColor}${textClass}">${condicionText}</span>`;
-                        }
-        
-                        // Generar badge para tipo de vehículo
-                        let tipoVehiculoBadge = '';
-                        if (servicio.tipo_vehiculo) {
-                            if (servicio.tipo_vehiculo === 'unico') {
-                                tipoVehiculoBadge = '<span class="badge bg-danger">Único</span>';
-                            } else if (servicio.tipo_vehiculo === 'proximo') {
-                                tipoVehiculoBadge = '<span class="badge bg-info">Próximo</span>';
+
+                    // Actualizar el timestamp de última actualización
+                    ultimaActualizacion = data.timestamp || '';
+
+                    // Actualizar siempre después de cancelar o finalizar un servicio
+                    // Si no hay servicios o si hay actualizaciones
+                    if (data.servicios.length === 0 || data.hayActualizaciones !== false) {
+                        // Actualizar contador de servicios
+                        document.getElementById('contadorServicios').textContent = data.servicios.length;
+
+                        // Obtener la tabla actual
+                        const tbody = document.querySelector('#tablaServicios tbody');
+
+                        // Guardar IDs actuales para comparar y detectar cambios
+                        const nuevosServiciosIds = new Set();
+                        data.servicios.forEach(servicio => nuevosServiciosIds.add(servicio.id));
+
+                        // Detectar servicios nuevos o eliminados
+                        const serviciosNuevos = [...nuevosServiciosIds].filter(id => !ultimosServiciosIds.has(id));
+                        const serviciosEliminados = [...ultimosServiciosIds].filter(id => !nuevosServiciosIds.has(id));
+
+                        // Si no hay servicios, mostrar mensaje
+                        if (data.servicios.length === 0) {
+                            tbody.innerHTML = `<tr><td colspan="10" class="text-center">No hay servicios activos</td></tr>`;
+
+                            // Si había servicios antes y ahora no hay, mostrar notificación
+                            if (ultimosServiciosIds.size > 0) {
+                                mostrarNotificacion('Todos los servicios han sido finalizados o cancelados', 'info');
                             }
+
+                            ultimosServiciosIds = new Set();
+                            return;
                         }
-        
-                        // Generar badge para estado
-                        const estadoBadge = {
-                            'pendiente': '<span class="badge bg-warning">Pendiente</span>',
-                            'asignado': '<span class="badge bg-info">Asignado</span>',
-                            'en_camino': '<span class="badge bg-primary">En camino</span>'
-                        } [servicio.estado] || '';
-        
-                        // Generar botones de acción según el estado
-                        let botonesAccion = '';
-                        
-                        // Añadir botón para editar dirección (disponible para todos los estados)
-                        botonesAccion += `<button type="button" class="btn btn-warning btn-sm editarDireccion" 
+
+                        // Notificar cambios importantes (solo si no se está forzando la actualización)
+                        if (serviciosNuevos.length > 0) {
+                            mostrarNotificacion(`${serviciosNuevos.length} nuevo(s) servicio(s) agregado(s)`, 'success');
+                        }
+
+                        if (serviciosEliminados.length > 0 && ultimaActualizacion !== '') {
+                            // No mostramos esta notificación cuando estamos forzando la actualización
+                            // después de cancelar/finalizar un servicio (ya tenemos otra notificación)
+                            mostrarNotificacion(`${serviciosEliminados.length} servicio(s) finalizado(s) o cancelado(s)`, 'warning');
+                        }
+
+                        // Generar HTML para los nuevos datos
+                        let htmlServicios = '';
+
+                        data.servicios.forEach(servicio => {
+                            // Verificar si el servicio es nuevo
+                            const esNuevo = serviciosNuevos.includes(servicio.id);
+
+                            // Calcular el tiempo transcurrido
+                            const tiempoInicio = servicio.fecha_solicitud;
+                            const ahora = new Date();
+                            const fechaInicio = new Date(tiempoInicio);
+                            const diffMinutos = Math.floor((ahora - fechaInicio) / 1000 / 60);
+
+                            const fecha_solicitud = servicio.fecha_solicitud;
+
+                            let tiempoFormateado;
+                            if (diffMinutos < 60) {
+                                tiempoFormateado = diffMinutos + ' min';
+                            } else {
+                                const horas = Math.floor(diffMinutos / 60);
+                                const minutos = diffMinutos % 60;
+                                tiempoFormateado = horas + 'h ' + minutos + 'm';
+                            }
+
+                            // Generar badge para condición
+                            let condicionBadge = '';
+                            if (servicio.condicion) {
+                                const badgeColor = {
+                                    'aire': 'danger',
+                                    'baul': 'primary',
+                                    'mascota': 'success',
+                                    'parrilla': 'warning',
+                                    'transferencia': 'info',
+                                    'daviplata': 'purple',
+                                    'polarizados': 'dark',
+                                    'silla_ruedas': 'teal'
+                                } [servicio.condicion] || 'secondary';
+
+                                // Añadir text-dark solo para warning para mejor legibilidad
+                                const textClass = badgeColor === 'warning' ? ' text-dark' : '';
+
+                                const condicionText = servicio.condicion.charAt(0).toUpperCase() +
+                                    servicio.condicion.slice(1).replace('_', ' ');
+                                condicionBadge = `<span class="badge bg-${badgeColor}${textClass}">${condicionText}</span>`;
+                            }
+
+                            // Generar badge para tipo de vehículo
+                            let tipoVehiculoBadge = '';
+                            if (servicio.tipo_vehiculo) {
+                                if (servicio.tipo_vehiculo === 'unico') {
+                                    tipoVehiculoBadge = '<span class="badge bg-danger">Único</span>';
+                                } else if (servicio.tipo_vehiculo === 'proximo') {
+                                    tipoVehiculoBadge = '<span class="badge bg-info">Próximo</span>';
+                                }
+                            }
+
+                            // Generar badge para estado
+                            const estadoBadge = {
+                                'pendiente': '<span class="badge bg-warning">Pendiente</span>',
+                                'asignado': '<span class="badge bg-info">Asignado</span>',
+                                'en_camino': '<span class="badge bg-primary">En camino</span>'
+                            } [servicio.estado] || '';
+
+                            // Generar botones de acción según el estado
+                            let botonesAccion = '';
+
+                            // Añadir botón para editar dirección (disponible para todos los estados)
+                            botonesAccion += `<button type="button" class="btn btn-warning btn-sm editarDireccion" 
                             title="Editar dirección" 
                             data-id="${servicio.id}" 
                             data-direccion="${servicio.direccion ? servicio.direccion.replace(/"/g, '&quot;') : ''}"
                             data-direccion-id="${servicio.direccion_id}">
                             <i class="bi bi-geo-alt"></i>
                         </button>`;
-                        
-                        // Botones específicos según el estado
-                        if (servicio.estado === 'pendiente') {
-                            botonesAccion += `<button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo" data-id="${servicio.id}">
+
+                            // Botones específicos según el estado
+                            if (servicio.estado === 'pendiente') {
+                                botonesAccion += `<button type="button" class="btn btn-primary btn-sm asignarServicio" title="Asignar vehículo" data-id="${servicio.id}">
                                 <i class="bi bi-car-front"></i>
                             </button>`;
-                        } else if (servicio.estado === 'asignado') {
-                            botonesAccion += `<button type="button" class="btn btn-info btn-sm cambiarMovil" title="Cambiar movil asignado" data-id="${servicio.id}">
+                            } else if (servicio.estado === 'asignado') {
+                                botonesAccion += `<button type="button" class="btn btn-info btn-sm cambiarMovil" title="Cambiar movil asignado" data-id="${servicio.id}">
                                 <i class="bi bi-signpost-2"></i>
                             </button>`;
-                        }
-        
-                        // Botones de finalizar y cancelar (disponibles para todos los estados)
-                        botonesAccion += `<button type="button" class="btn btn-success btn-sm finalizarServicio" title="Finalizar servicio" data-id="${servicio.id}">
+                            }
+
+                            // Botones de finalizar y cancelar (disponibles para todos los estados)
+                            botonesAccion += `<button type="button" class="btn btn-success btn-sm finalizarServicio" title="Finalizar servicio" data-id="${servicio.id}">
                             <i class="bi bi-check-circle"></i>
                         </button>
                         <button type="button" class="btn btn-danger btn-sm cancelarServicio" title="Cancelar servicio" data-id="${servicio.id}">
                             <i class="bi bi-x-circle"></i>
                         </button>`;
-        
-                        // Información del vehículo
-                        const infoVehiculo = servicio.placa ?
-                            `${servicio.numero_movil} - ${servicio.placa}` : '-';
-        
-                        // Construir la fila
-                        htmlServicios += `<tr>
+
+                            // Información del vehículo
+                            const infoVehiculo = servicio.placa ?
+                                `${servicio.numero_movil} - ${servicio.placa}` : '-';
+
+                            // Definir clase para filas nuevas
+                            const claseRow = esNuevo ? ' class="fila-nueva"' : '';
+
+                            // Construir la fila
+                            htmlServicios += `<tr${claseRow} data-servicio-id="${servicio.id}">
                         <td>${servicio.telefono}</td>
                         <td>${servicio.direccion}</td>
                         <td>${servicio.observaciones || 'sin observaciones'}</td>
@@ -565,16 +699,20 @@ unset($_SESSION['tipo_mensaje']);
                         <td><span class="tiempoTranscurrido" data-inicio="${tiempoInicio}">${tiempoFormateado}</span></td>
                         <td>${botonesAccion}</td>
                     </tr>`;
-                    });
-        
-                    // Actualizar el contenido de la tabla
-                    tbody.innerHTML = htmlServicios;
-        
-                    // Restaurar la posición de scroll
-                    window.scrollTo(0, scrollPos);
-        
-                    // Volver a añadir event listeners a los nuevos botones
-                    agregarEventListeners();
+                        });
+
+                        // Actualizar el contenido de la tabla
+                        tbody.innerHTML = htmlServicios;
+
+                        // Restaurar la posición de scroll
+                        window.scrollTo(0, scrollPos);
+
+                        // Actualizar el conjunto de IDs de servicios
+                        ultimosServiciosIds = nuevosServiciosIds;
+
+                        // Volver a añadir event listeners a los nuevos botones
+                        agregarEventListeners();
+                    }
                 })
                 .catch(error => {
                     console.error('Error al actualizar tabla:', error);
@@ -582,7 +720,6 @@ unset($_SESSION['tipo_mensaje']);
         };
         // Función para agregar event listeners a los botones de acción
         function agregarEventListeners() {
-
             document.querySelectorAll('.editarDireccion').forEach(button => {
                 button.addEventListener('click', function() {
                     const servicioId = this.getAttribute('data-id');
@@ -593,101 +730,108 @@ unset($_SESSION['tipo_mensaje']);
                     document.getElementById('editarDireccionId').value = direccionId;
                     document.getElementById('editarDireccionTexto').value = direccionTexto;
 
+                    // Activar control de modal
+                    modalEstados.editarModal = true;
+
                     // Mostrar modal
                     new bootstrap.Modal(document.getElementById('editarDireccionModal')).show();
                 });
             });
 
-
-
             document.querySelectorAll('.asignarServicio').forEach(button => {
-    button.addEventListener('click', function() {
-        const servicioId = this.getAttribute('data-id');
-        document.getElementById('servicioId').value = servicioId;
-        
-        // Obtener la dirección de la fila actual
-        const fila = this.closest('tr');
-        const direccion = fila.querySelector('td:nth-child(2)').textContent.trim();
-        
-        // Mostrar la dirección en el modal
-        document.getElementById('asignarDireccionServicio').textContent = direccion;
+                button.addEventListener('click', function() {
+                    const servicioId = this.getAttribute('data-id');
+                    document.getElementById('servicioId').value = servicioId;
 
-        // Cargar vehículos disponibles dinámicamente
-        fetch('../Processings/obtener_vehiculos_disponibles.php')
-            .then(response => response.json())
-            .then(data => {
-                const vehiculoSelect = document.getElementById('vehiculoSelect');
-                vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+                    // Obtener la dirección de la fila actual
+                    const fila = this.closest('tr');
+                    const direccion = fila.querySelector('td:nth-child(2)').textContent.trim();
 
-                if (data.vehiculos && data.vehiculos.length > 0) {
-                    data.vehiculos.forEach(vehiculo => {
-                        const option = document.createElement('option');
-                        option.value = vehiculo.id;
-                        option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
-                        vehiculoSelect.appendChild(option);
-                    });
-                } else {
-                    const option = document.createElement('option');
-                    option.disabled = true;
-                    option.textContent = 'No hay vehículos disponibles';
-                    vehiculoSelect.appendChild(option);
-                }
+                    // Mostrar la dirección en el modal
+                    document.getElementById('asignarDireccionServicio').textContent = direccion;
 
-                // Mostrar modal después de cargar los vehículos
-                new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
-            })
-            .catch(error => {
-                console.error('Error al cargar vehículos:', error);
-                alert('Error al cargar vehículos disponibles');
+                    // Cargar vehículos disponibles dinámicamente
+                    fetch('../Processings/obtener_vehiculos_disponibles.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            const vehiculoSelect = document.getElementById('vehiculoSelect');
+                            vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+
+                            if (data.vehiculos && data.vehiculos.length > 0) {
+                                data.vehiculos.forEach(vehiculo => {
+                                    const option = document.createElement('option');
+                                    option.value = vehiculo.id;
+                                    option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
+                                    vehiculoSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.disabled = true;
+                                option.textContent = 'No hay vehículos disponibles';
+                                vehiculoSelect.appendChild(option);
+                            }
+
+                            // Activar control de modal
+                            modalEstados.asignarModal = true;
+
+                            // Mostrar modal después de cargar los vehículos
+                            new bootstrap.Modal(document.getElementById('asignarVehiculoModal')).show();
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar vehículos:', error);
+                            alert('Error al cargar vehículos disponibles');
+                        });
+                });
             });
-    });
-});
 
-document.querySelectorAll('.cambiarMovil').forEach(button => {
-    button.addEventListener('click', function() {
-        const servicioId = this.getAttribute('data-id');
-        const fila = this.closest('tr');
-        const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
-        
-        // Obtener la dirección de la fila actual
-        const direccion = fila.querySelector('td:nth-child(2)').textContent.trim();
-        
-        // Mostrar la dirección en el modal
-        document.getElementById('cambiarDireccionServicio').textContent = direccion;
+            document.querySelectorAll('.cambiarMovil').forEach(button => {
+                button.addEventListener('click', function() {
+                    const servicioId = this.getAttribute('data-id');
+                    const fila = this.closest('tr');
+                    const vehiculoActual = fila.querySelector('td:nth-child(5)').textContent.trim();
 
-        document.getElementById('cambiarServicioId').value = servicioId;
-        document.getElementById('vehiculoActual').textContent = vehiculoActual;
+                    // Obtener la dirección de la fila actual
+                    const direccion = fila.querySelector('td:nth-child(2)').textContent.trim();
 
-        // Cargar vehículos disponibles dinámicamente
-        fetch('../Processings/obtener_vehiculos_disponibles.php')
-            .then(response => response.json())
-            .then(data => {
-                const vehiculoSelect = document.getElementById('nuevoVehiculoSelect');
-                vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+                    // Mostrar la dirección en el modal
+                    document.getElementById('cambiarDireccionServicio').textContent = direccion;
 
-                if (data.vehiculos && data.vehiculos.length > 0) {
-                    data.vehiculos.forEach(vehiculo => {
-                        const option = document.createElement('option');
-                        option.value = vehiculo.id;
-                        option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
-                        vehiculoSelect.appendChild(option);
-                    });
-                } else {
-                    const option = document.createElement('option');
-                    option.disabled = true;
-                    option.textContent = 'No hay vehículos disponibles';
-                    vehiculoSelect.appendChild(option);
-                }
+                    document.getElementById('cambiarServicioId').value = servicioId;
+                    document.getElementById('vehiculoActual').textContent = vehiculoActual;
 
-                // Mostrar modal después de cargar los vehículos
-                new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
-            })
-            .catch(error => {
-                console.error('Error al cargar vehículos:', error);
-                alert('Error al cargar vehículos disponibles');
+                    // Cargar vehículos disponibles dinámicamente
+                    fetch('../Processings/obtener_vehiculos_disponibles.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            const vehiculoSelect = document.getElementById('nuevoVehiculoSelect');
+                            vehiculoSelect.innerHTML = ''; // Limpiar opciones existentes
+
+                            if (data.vehiculos && data.vehiculos.length > 0) {
+                                data.vehiculos.forEach(vehiculo => {
+                                    const option = document.createElement('option');
+                                    option.value = vehiculo.id;
+                                    option.textContent = `${vehiculo.numero_movil} - ${vehiculo.placa} ${vehiculo.modelo ? '(' + vehiculo.modelo + ')' : ''}`;
+                                    vehiculoSelect.appendChild(option);
+                                });
+                            } else {
+                                const option = document.createElement('option');
+                                option.disabled = true;
+                                option.textContent = 'No hay vehículos disponibles';
+                                vehiculoSelect.appendChild(option);
+                            }
+
+                            // Activar control de modal
+                            modalEstados.cambiarModal = true;
+
+                            // Mostrar modal después de cargar los vehículos
+                            new bootstrap.Modal(document.getElementById('cambiarVehiculoModal')).show();
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar vehículos:', error);
+                            alert('Error al cargar vehículos disponibles');
+                        });
+                });
             });
-    });
-});
 
             document.querySelectorAll('.finalizarServicio').forEach(button => {
                 button.addEventListener('click', function() {
@@ -697,22 +841,40 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                         formData.append('servicio_id', servicioId);
                         formData.append('accion', 'finalizar');
 
+                        // Mostrar indicador de carga
+                        const btnFinalizar = this;
+                        const textoOriginal = btnFinalizar.innerHTML;
+                        btnFinalizar.disabled = true;
+                        btnFinalizar.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
                         fetch('../Processings/procesar_servicio.php', {
                                 method: 'POST',
                                 body: formData
                             })
                             .then(response => response.json())
                             .then(data => {
+                                // Restaurar botón
+                                btnFinalizar.disabled = false;
+                                btnFinalizar.innerHTML = textoOriginal;
+
                                 if (data.error) {
-                                    alert('Error al finalizar servicio: ' + data.mensaje);
+                                    mostrarNotificacion('Error al finalizar servicio: ' + data.mensaje, 'danger');
                                 } else {
-                                    // Forzar actualización inmediata
-                                    location.reload();
+                                    // Notificar éxito
+                                    mostrarNotificacion('Servicio finalizado correctamente', 'success');
+
+                                    // Forzar actualización inmediata con pequeño delay
+                                    setTimeout(() => {
+                                        ultimaActualizacion = ''; // Reset para forzar carga completa
+                                        actualizarTablaServicios();
+                                    }, 300);
                                 }
                             })
                             .catch(error => {
                                 console.error('Error:', error);
-                                alert('Error al finalizar servicio');
+                                btnFinalizar.disabled = false;
+                                btnFinalizar.innerHTML = textoOriginal;
+                                mostrarNotificacion('Error al finalizar servicio', 'danger');
                             });
                     }
                 });
@@ -726,22 +888,42 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                         formData.append('servicio_id', servicioId);
                         formData.append('accion', 'cancelar');
 
+                        // Mostrar indicador de carga
+                        const btnCancelar = this;
+                        const textoOriginal = btnCancelar.innerHTML;
+                        btnCancelar.disabled = true;
+                        btnCancelar.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
                         fetch('../Processings/procesar_servicio.php', {
                                 method: 'POST',
                                 body: formData
                             })
                             .then(response => response.json())
                             .then(data => {
+                                // Restaurar botón
+                                btnCancelar.disabled = false;
+                                btnCancelar.innerHTML = textoOriginal;
+
                                 if (data.error) {
-                                    alert('Error al cancelar servicio: ' + data.mensaje);
+                                    mostrarNotificacion('Error al cancelar servicio: ' + data.mensaje, 'danger');
                                 } else {
+                                    // Mostrar notificación de éxito
+                                    mostrarNotificacion('Servicio cancelado correctamente', 'warning');
+
                                     // Forzar actualización inmediata
-                                    actualizarTablaServicios();
+                                    // Importante: usar setTimeout para dar tiempo al servidor de procesar el cambio
+                                    setTimeout(() => {
+                                        // Forzar una actualización sin usar la caché
+                                        ultimaActualizacion = ''; // Reset para forzar carga completa
+                                        actualizarTablaServicios();
+                                    }, 300);
                                 }
                             })
                             .catch(error => {
                                 console.error('Error:', error);
-                                alert('Error al cancelar servicio');
+                                btnCancelar.disabled = false;
+                                btnCancelar.innerHTML = textoOriginal;
+                                mostrarNotificacion('Error al cancelar servicio', 'danger');
                             });
                     }
                 });
@@ -884,7 +1066,7 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
             const formData = new FormData();
             formData.append('cliente_id', clienteActual.id);
             formData.append('direccion_id', direccionSeleccionada);
-            formData.append('condicion', condicion);
+            formData.append('condicion', condicion !== 'ninguno' ? condicion : null);
             formData.append('observaciones', observaciones);
             formData.append('accion', 'crear');
 
@@ -917,8 +1099,9 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                         alert('El servicio se ha creado con ID: ' + data.id + ' pero hubo un problema: ' + data.mensaje);
                         // Limpiar formulario de todas formas
                         limpiarFormularioServicio();
-                        // Actualizar tabla
-                        location.reload();
+                        // Forzar actualización completa de la tabla
+                        ultimaActualizacion = '';
+                        setTimeout(actualizarTablaServicios, 500);
                         return;
                     }
 
@@ -931,8 +1114,15 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                     // Caso de éxito
                     // Limpiar formulario
                     limpiarFormularioServicio();
-                    // Actualizar tabla
-                    location.reload();
+
+                    // Mostrar notificación
+                    mostrarNotificacion('Servicio creado correctamente', 'success');
+
+                    // IMPORTANTE: Forzar actualización completa de la tabla con un retraso mayor
+                    ultimaActualizacion = ''; // Reset para forzar carga completa
+                    setTimeout(() => {
+                        actualizarTablaServicios();
+                    }, 500); // Esperar 500ms para dar tiempo al servidor
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -960,6 +1150,7 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
         }
 
         // Confirmar edición de dirección
+
         document.getElementById('confirmarEditarDireccion').addEventListener('click', function() {
             const servicioId = document.getElementById('editarServicioId').value;
             const direccionId = document.getElementById('editarDireccionId').value;
@@ -998,12 +1189,19 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                     btnConfirmar.innerHTML = textoOriginal;
 
                     if (data.error) {
-                        alert('Error: ' + data.mensaje);
+                        mostrarNotificacion('Error: ' + data.mensaje, 'danger');
                     } else {
+                        // Cerrar el modal
                         bootstrap.Modal.getInstance(document.getElementById('editarDireccionModal')).hide();
-                        alert('Dirección actualizada correctamente');
-                        // Actualizar la tabla
-                        actualizarTablaServicios();
+
+                        // Mostrar notificación
+                        mostrarNotificacion('Dirección actualizada correctamente', 'success');
+
+                        // IMPORTANTE: Forzar actualización completa de la tabla con un retraso
+                        ultimaActualizacion = ''; // Reset para forzar carga completa
+                        setTimeout(() => {
+                            actualizarTablaServicios();
+                        }, 300); // Esperar 300ms para dar tiempo al servidor
                     }
                 })
                 .catch(error => {
@@ -1013,7 +1211,7 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                     btnConfirmar.disabled = false;
                     btnConfirmar.innerHTML = textoOriginal;
 
-                    alert('Error al actualizar la dirección: ' + error.message);
+                    mostrarNotificacion('Error al actualizar la dirección: ' + error.message, 'danger');
                 });
         });
 
@@ -1040,7 +1238,8 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                         alert('Error al asignar vehículo: ' + data.mensaje);
                     } else {
                         bootstrap.Modal.getInstance(document.getElementById('asignarVehiculoModal')).hide();
-                        location.reload();
+                        mostrarNotificacion('Vehículo asignado correctamente', 'success');
+                        setTimeout(actualizarTablaServicios, 100);
                     }
                 })
                 .catch(error => {
@@ -1102,7 +1301,8 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
                     } else {
                         alert('Vehículo cambiado correctamente');
                         bootstrap.Modal.getInstance(document.getElementById('cambiarVehiculoModal')).hide();
-                        location.reload();
+                        mostrarNotificacion('Vehículo cambiado correctamente', 'success');
+                        setTimeout(actualizarTablaServicios, 100);
                     }
                 })
                 .catch(error => {
@@ -1258,25 +1458,49 @@ document.querySelectorAll('.cambiarMovil').forEach(button => {
         function iniciarActualizacionAutomatica() {
             // Detectar cuando se abren/cierran modales
             document.getElementById('asignarVehiculoModal').addEventListener('shown.bs.modal', () => modalEstados.asignarModal = true);
-            document.getElementById('asignarVehiculoModal').addEventListener('hidden.bs.modal', () => modalEstados.asignarModal = false);
-            document.getElementById('cambiarVehiculoModal').addEventListener('shown.bs.modal', () => modalEstados.cambiarModal = true);
-            document.getElementById('cambiarVehiculoModal').addEventListener('hidden.bs.modal', () => modalEstados.cambiarModal = false);
+            document.getElementById('asignarVehiculoModal').addEventListener('hidden.bs.modal', () => {
+                modalEstados.asignarModal = false;
+                // Forzar actualización inmediata al cerrar modal
+                actualizarTablaServicios();
+            });
 
-            // Iniciar actualización periódica (cada 2 segundos)
-            intervaloActualizacion = setInterval(actualizarTablaServicios, 2000);
+            document.getElementById('cambiarVehiculoModal').addEventListener('shown.bs.modal', () => modalEstados.cambiarModal = true);
+            document.getElementById('cambiarVehiculoModal').addEventListener('hidden.bs.modal', () => {
+                modalEstados.cambiarModal = false;
+                // Forzar actualización inmediata al cerrar modal
+                actualizarTablaServicios();
+            });
+
+            document.getElementById('editarDireccionModal').addEventListener('shown.bs.modal', () => modalEstados.editarModal = true);
+            document.getElementById('editarDireccionModal').addEventListener('hidden.bs.modal', () => {
+                modalEstados.editarModal = false;
+                // Forzar actualización inmediata al cerrar modal
+                actualizarTablaServicios();
+            });
+
+            // Iniciar actualización periódica (cada 1 segundo)
+            intervaloActualizacion = setInterval(actualizarTablaServicios, 1000);
 
             // Detener actualizaciones cuando el usuario abandona la página
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
+                    // Pausar actualizaciones cuando el usuario no está en la página
                     clearInterval(intervaloActualizacion);
+                    intervaloActualizacion = null;
                 } else {
-                    // Reiniciar actualizaciones cuando regresa
+                    // Forzar actualización inmediata al regresar
+                    actualizarTablaServicios();
+
+                    // Reiniciar actualizaciones periódicas
                     if (!intervaloActualizacion) {
-                        intervaloActualizacion = setInterval(actualizarTablaServicios, 2000);
+                        intervaloActualizacion = setInterval(actualizarTablaServicios, 1000);
                     }
                 }
             });
         }
+
+        // Primera actualización manual al cargar la página
+        actualizarTablaServicios();
 
         // Añadir listeners iniciales para los botones existentes
         agregarEventListeners();

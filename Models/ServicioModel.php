@@ -89,6 +89,11 @@ class Servicio
             $fields = [];
             $params = [':id' => $id];
 
+            // Siempre incluir la fecha de actualización
+            $fecha_actualizacion = date('Y-m-d H:i:s');
+            $fields[] = "fecha_actualizacion = :fecha_actualizacion";
+            $params[':fecha_actualizacion'] = $fecha_actualizacion;
+
             foreach ($datos as $key => $value) {
                 if ($value !== null) {
                     $fields[] = "$key = :$key";
@@ -164,7 +169,7 @@ class Servicio
         }
     }
 
-    
+
 
     /**
      * Obtiene la lista de servicios del día actual
